@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: CampusFlowServer
+  profiles:
+    default: local #기본 실행 프로필
+
+server:
+  servlet:
+    context-path: / #서버 기본 경로
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+app:
+  api-prefix: /api/v1 #백엔드 API prefix

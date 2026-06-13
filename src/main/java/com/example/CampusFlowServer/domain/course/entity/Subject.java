@@ -1,6 +1,6 @@
 package com.example.CampusFlowServer.domain.course.entity;
 
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import com.example.CampusFlowServer.domain.course.enums.SubjectCategory;
 import com.example.CampusFlowServer.domain.member.entity.Department;
 import jakarta.persistence.Column;
@@ -35,21 +35,21 @@ public class Subject extends BaseEntity {
     private Long id;
 
     @Column(nullable = false, unique = true, length = 30)
-    private String code; //과목 코드
+    private String code;
 
     @Column(nullable = false, length = 100)
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "department_id", nullable = false)
-    private Department department; //개설 학과
+    private Department department;
 
     @Column(nullable = false)
-    private Integer credit; //학점
+    private Integer credit;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private SubjectCategory category; //과목 구분
+    private SubjectCategory category;
 
     @Column(nullable = false)
     private boolean active = true;

@@ -1,6 +1,6 @@
 package com.example.CampusFlowServer.domain.member.entity;
 
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import com.example.CampusFlowServer.domain.member.enums.DepartmentType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -23,14 +23,13 @@ public class Department extends BaseEntity {
     private Long id;
 
     @Column(nullable = false, length = 100)
-    private String name; //학과 또는 부서명
+    private String name;
 
     @Column(length = 100)
-    private String collegeName; //단과대 또는 상위 조직명
-
+    private String collegeName;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private DepartmentType type; //부서 유형
+    private DepartmentType type;
 
     @Column(nullable = false)
     private boolean active = true;

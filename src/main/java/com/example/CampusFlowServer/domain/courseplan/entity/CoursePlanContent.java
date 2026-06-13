@@ -1,7 +1,7 @@
 package com.example.CampusFlowServer.domain.courseplan.entity;
 
-import com.example.CampusFlowServer.domain.common.BaseEntity;
 import com.example.CampusFlowServer.domain.courseplan.enums.CoursePlanVersionType;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -38,14 +38,14 @@ public class CoursePlanContent extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "course_plan_id", nullable = false)
-    private CoursePlan coursePlan; //대상 강의 계획서
+    private CoursePlan coursePlan;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "version_type", nullable = false, length = 30)
-    private CoursePlanVersionType versionType; //내용 버전 유형
+    private CoursePlanVersionType versionType;
 
     @Column(length = 1000)
-    private String overview; //개요
+    private String overview;
 
     @Column(length = 1000)
     private String objective;
@@ -60,5 +60,5 @@ public class CoursePlanContent extends BaseEntity {
     private String restrictionNote;
 
     @Column(name = "attachment_name", length = 255)
-    private String attachmentName; //첨부파일명
+    private String attachmentName;
 }

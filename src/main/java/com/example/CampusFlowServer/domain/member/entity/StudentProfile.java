@@ -1,6 +1,6 @@
 package com.example.CampusFlowServer.domain.member.entity;
 
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import com.example.CampusFlowServer.domain.member.enums.AcademicStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -37,22 +37,22 @@ public class StudentProfile extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "member_id", nullable = false)
-    private Member member; //공통 회원 계정
+    private Member member;
 
     @Column(name = "student_no", nullable = false, unique = true, length = 30)
     private String studentNo;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "department_id", nullable = false)
-    private Department department; //소속 학과
+    private Department department;
 
     @Column(nullable = false)
     private Integer grade;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private AcademicStatus academicStatus; //학적 상태
+    private AcademicStatus academicStatus;
 
     @Column(name = "max_credit")
-    private Integer maxCredit; //최대 신청 학점
+    private Integer maxCredit;
 }

@@ -1,4 +1,4 @@
-package com.example.CampusFlowServer.domain.common;
+package com.example.CampusFlowServer.global.common;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;

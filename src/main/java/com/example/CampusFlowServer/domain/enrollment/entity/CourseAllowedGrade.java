@@ -1,6 +1,7 @@
-package com.example.CampusFlowServer.domain.course.entity;
+package com.example.CampusFlowServer.domain.enrollment.entity;
 
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.global.common.BaseEntity;
+import com.example.CampusFlowServer.domain.course.entity.CourseOffering;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -20,34 +21,30 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
-    name = "course_prerequisites",
+    name = "course_allowed_grades",
     uniqueConstraints = {
         @UniqueConstraint(
-            name = "uk_course_prerequisite",
-            columnNames = {"subject_id", "prerequisite_subject_id"}
+            name = "uk_course_allowed_grade",
+            columnNames = {"course_offering_id", "grade_level"}
         )
     },
     indexes = {
         @Index(
-            name = "idx_course_prerequisite_subject",
-            columnList = "subject_id"
+            name = "idx_course_allowed_grade_course",
+            columnList = "course_offering_id"
         )
     }
 )
-public class CoursePrerequisite extends BaseEntity {
+public class CourseAllowedGrade extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "subject_id", nullable = false)
-    private Subject subject; //수강하려는 대상 과목
+    @JoinColumn(name = "course_offering_id", nullable = false)
+    private CourseOffering courseOffering;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "prerequisite_subject_id", nullable = false)
-    private Subject prerequisiteSubject; //먼저 이수해야 할 선수 과목
-
-    @Column(nullable = false)
-    private boolean active = true; //사용 여부
+    @Column(name = "grade_level", nullable = false)
+    private Integer gradeLevel;
 }

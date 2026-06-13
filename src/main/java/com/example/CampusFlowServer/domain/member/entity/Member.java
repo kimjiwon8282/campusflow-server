@@ -1,6 +1,6 @@
 package com.example.CampusFlowServer.domain.member.entity;
 
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import com.example.CampusFlowServer.domain.member.enums.MemberRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

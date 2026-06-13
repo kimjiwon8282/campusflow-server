@@ -1,6 +1,6 @@
 package com.example.CampusFlowServer.domain.courseplan.entity;
 
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -35,11 +35,11 @@ public class CoursePlanWeek extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "course_plan_content_id", nullable = false)
-    private CoursePlanContent coursePlanContent;// 대상 강의 계획서 내용
+    private CoursePlanContent coursePlanContent;
 
     @Column(name = "week_no", nullable = false)
-    private Integer weekNo; //주차 번호
+    private Integer weekNo;
 
     @Column(length = 1000)
-    private String content; //주차별 수업 내용
+    private String content;
 }

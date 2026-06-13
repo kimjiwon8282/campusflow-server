@@ -1,0 +1,48 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
+    open-in-view: false
+
+app:
+  jwt:
+    access-secret: ${JWT_ACCESS_SECRET}
+    refresh-secret: ${JWT_REFRESH_SECRET}
+    access-token-validity-ms: ${JWT_ACCESS_TOKEN_VALIDITY_MS:1800000}
+    refresh-token-validity-ms: ${JWT_REFRESH_TOKEN_VALIDITY_MS:1296000000}
+
+  cookie:
+    access-token-name: ${ACCESS_TOKEN_COOKIE_NAME:ACCESS_TOKEN}
+    refresh-token-name: ${REFRESH_TOKEN_COOKIE_NAME:REFRESH_TOKEN}
+    csrf-token-name: ${CSRF_TOKEN_COOKIE_NAME:XSRF-TOKEN}
+    csrf-header-name: ${CSRF_HEADER_NAME:X-XSRF-TOKEN}
+    secure: ${COOKIE_SECURE:false}
+    http-only: ${COOKIE_HTTP_ONLY:true}
+    same-site: ${COOKIE_SAME_SITE:Lax}
+    access-token-max-age-seconds: ${ACCESS_TOKEN_COOKIE_MAX_AGE_SECONDS:1800}
+    refresh-token-max-age-seconds: ${REFRESH_TOKEN_COOKIE_MAX_AGE_SECONDS:1296000}
+
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOWED_HEADERS:*}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+
+  refresh-token-cleanup:
+    enabled: ${REFRESH_TOKEN_CLEANUP_ENABLED}
+    cron: ${REFRESH_TOKEN_CLEANUP_CRON}
+    revoked-retention-days: ${REFRESH_TOKEN_REVOKED_RETENTION_DAYS}

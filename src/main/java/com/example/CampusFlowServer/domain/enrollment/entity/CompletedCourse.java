@@ -1,7 +1,8 @@
-package com.example.CampusFlowServer.domain.course.entity;
+package com.example.CampusFlowServer.domain.enrollment.entity;
 
-import com.example.CampusFlowServer.domain.academic.entity.Semester;
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.domain.semester.entity.Semester;
+import com.example.CampusFlowServer.global.common.BaseEntity;
+import com.example.CampusFlowServer.domain.course.entity.Subject;
 import com.example.CampusFlowServer.domain.member.entity.StudentProfile;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -49,21 +50,21 @@ public class CompletedCourse extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_profile_id", nullable = false)
-    private StudentProfile student; //이수 학생
+    private StudentProfile student;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "subject_id", nullable = false)
-    private Subject subject; // 이수 과목
+    private Subject subject;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "completed_semester_id", nullable = false)
-    private Semester completedSemester; //이수 학기
+    private Semester completedSemester;
 
     @Column(name = "letter_grade", length = 10)
-    private String letterGrade; //성적 표기
+    private String letterGrade;
 
     @Column(nullable = false)
-    private boolean passed = true; //이수 인정 여부
+    private boolean passed = true;
 
     private LocalDateTime completedAt;
 }

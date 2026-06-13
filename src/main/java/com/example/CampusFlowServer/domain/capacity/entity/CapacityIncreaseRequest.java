@@ -1,10 +1,10 @@
-package com.example.CampusFlowServer.domain.request.entity;
+package com.example.CampusFlowServer.domain.capacity.entity;
 
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import com.example.CampusFlowServer.domain.course.entity.CourseOffering;
 import com.example.CampusFlowServer.domain.member.entity.ProfessorProfile;
 import com.example.CampusFlowServer.domain.member.entity.StaffProfile;
-import com.example.CampusFlowServer.domain.request.enums.CapacityIncreaseRequestStatus;
+import com.example.CampusFlowServer.domain.capacity.enums.CapacityIncreaseRequestStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -41,31 +41,30 @@ public class CapacityIncreaseRequest extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "course_offering_id", nullable = false)
-    private CourseOffering courseOffering; //증원 대상 개설 강의
+    private CourseOffering courseOffering;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "professor_profile_id", nullable = false)
-    private ProfessorProfile professor; //증원 요청 교수
+    private ProfessorProfile professor;
 
     @Column(name = "current_capacity", nullable = false)
-    private Integer currentCapacity; //기존 정원
+    private Integer currentCapacity;
 
     @Column(name = "requested_capacity", nullable = false)
-    private Integer requestedCapacity; //목표 정원
+    private Integer requestedCapacity;
 
     @Column(nullable = false, length = 1000)
-    private String reason; //사유
+    private String reason;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private CapacityIncreaseRequestStatus status = CapacityIncreaseRequestStatus.PENDING;// 증원 요청 처리 상태
+    private CapacityIncreaseRequestStatus status = CapacityIncreaseRequestStatus.PENDING;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "processed_by")
-    private StaffProfile processedBy;//처리 교직원
-
-    private LocalDateTime processedAt;//처리 시각
+    private StaffProfile processedBy;
+    private LocalDateTime processedAt;
 
     @Column(name = "processed_comment", length = 1000)
-    private String processedComment; //처리 의견
+    private String processedComment;
 }

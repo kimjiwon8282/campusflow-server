@@ -1,4 +1,4 @@
-package com.example.CampusFlowServer.domain.academic.enums;
+package com.example.CampusFlowServer.domain.semester.enums;
 
 public enum SemesterTerm {
     FIRST,

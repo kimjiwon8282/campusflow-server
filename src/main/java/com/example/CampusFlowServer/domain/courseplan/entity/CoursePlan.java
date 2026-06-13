@@ -1,6 +1,6 @@
 package com.example.CampusFlowServer.domain.courseplan.entity;
 
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import com.example.CampusFlowServer.domain.course.entity.CourseOffering;
 import com.example.CampusFlowServer.domain.courseplan.enums.CoursePlanStatus;
 import com.example.CampusFlowServer.domain.member.entity.ProfessorProfile;
@@ -42,15 +42,15 @@ public class CoursePlan extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "course_offering_id", nullable = false)
-    private CourseOffering courseOffering; //대상 개설 강의
+    private CourseOffering courseOffering;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private CoursePlanStatus status; //강의 계획서 상태(강의계획서 대표 상태)
+    private CoursePlanStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "created_by", nullable = false)
-    private ProfessorProfile createdBy; //작성 교수
+    private ProfessorProfile createdBy;
 
-    private LocalDateTime publishedAt; //게시 시각
+    private LocalDateTime publishedAt;
 }

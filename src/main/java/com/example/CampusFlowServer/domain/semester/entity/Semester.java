@@ -1,7 +1,7 @@
-package com.example.CampusFlowServer.domain.academic.entity;
+package com.example.CampusFlowServer.domain.semester.entity;
 
-import com.example.CampusFlowServer.domain.academic.enums.SemesterTerm;
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.domain.semester.enums.SemesterTerm;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -31,17 +31,15 @@ public class Semester extends BaseEntity {
     private Long id;
 
     @Column(nullable = false)
-    private Integer year; //학년도
-
+    private Integer year;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private SemesterTerm term; //학기 구분
+    private SemesterTerm term;
 
     @Column(nullable = false, length = 50)
-    private String name; //학기명
-
+    private String name;
     @Column(name = "max_credit", nullable = false)
-    private Integer maxCredit = 18; //기본 최대 신청 학점
+    private Integer maxCredit = 18;
 
     @Column(nullable = false)
     private boolean active = true;

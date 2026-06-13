@@ -1,7 +1,7 @@
 package com.example.CampusFlowServer.domain.enrollment.entity;
 
-import com.example.CampusFlowServer.domain.academic.entity.Semester;
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.domain.semester.entity.Semester;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import com.example.CampusFlowServer.domain.course.entity.CourseOffering;
 import com.example.CampusFlowServer.domain.enrollment.enums.WishAutoApplyResult;
 import com.example.CampusFlowServer.domain.member.entity.StudentProfile;
@@ -31,7 +31,7 @@ import lombok.NoArgsConstructor;
         @UniqueConstraint(
             name = "uk_wish_course_student_course",
             columnNames = {"student_profile_id", "course_offering_id"}
-        )//동일 학생이 동일 개설 회망과목으로 중복 담는 상황 방지
+        )
     },
     indexes = {
         @Index(
@@ -63,12 +63,12 @@ public class WishCourse extends BaseEntity {
     private CourseOffering courseOffering;
 
     @Column(nullable = false)
-    private boolean autoApply = false; //자동 신청 선택 여부
+    private boolean autoApply = false;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private WishAutoApplyResult result; //자동 신청 결과 상태
+    private WishAutoApplyResult result;
 
     @Column(length = 255)
-    private String resultMessage; //자동 신청 결과 메시지
+    private String resultMessage;
 }

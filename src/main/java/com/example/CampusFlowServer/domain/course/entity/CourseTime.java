@@ -1,6 +1,6 @@
 package com.example.CampusFlowServer.domain.course.entity;
 
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import com.example.CampusFlowServer.domain.course.enums.DayOfWeek;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -29,15 +29,15 @@ public class CourseTime extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "course_offering_id", nullable = false)
-    private CourseOffering courseOffering; //대상 개설 강의
+    private CourseOffering courseOffering;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private DayOfWeek dayOfWeek; //요일
+    private DayOfWeek dayOfWeek;
 
     @Column(nullable = false)
-    private Integer startPeriod; //시작 교시
+    private Integer startPeriod;
 
     @Column(nullable = false)
-    private Integer endPeriod; //종료 교시
+    private Integer endPeriod;
 }

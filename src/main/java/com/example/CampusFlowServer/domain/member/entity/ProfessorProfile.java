@@ -1,6 +1,6 @@
 package com.example.CampusFlowServer.domain.member.entity;
 
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -34,17 +34,17 @@ public class ProfessorProfile extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "member_id", nullable = false)
-    private Member member; //공통 회원 계정
+    private Member member;
 
     @Column(name = "professor_no", nullable = false, unique = true, length = 30)
-    private String professorNo; //교번
+    private String professorNo;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "department_id", nullable = false)
-    private Department department; //소속 학과
+    private Department department;
 
     @Column(length = 50)
-    private String position; //직위
+    private String position;
 
     @Column(nullable = false)
     private boolean active = true;

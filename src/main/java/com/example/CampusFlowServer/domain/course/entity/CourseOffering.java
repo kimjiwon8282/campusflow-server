@@ -1,10 +1,10 @@
 package com.example.CampusFlowServer.domain.course.entity;
 
-import com.example.CampusFlowServer.domain.academic.entity.Semester;
-import com.example.CampusFlowServer.domain.common.BaseEntity;
 import com.example.CampusFlowServer.domain.course.enums.CourseOfferingStatus;
 import com.example.CampusFlowServer.domain.member.entity.ProfessorProfile;
 import com.example.CampusFlowServer.domain.member.entity.StaffProfile;
+import com.example.CampusFlowServer.domain.semester.entity.Semester;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -32,24 +32,24 @@ public class CourseOffering extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "semester_id", nullable = false)
-    private Semester semester; //개설 학기
+    private Semester semester;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "subject_id", nullable = false)
-    private Subject subject; //과목 기준 정보
+    private Subject subject;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "professor_profile_id", nullable = false)
-    private ProfessorProfile professor; //담당 교수
+    private ProfessorProfile professor;
 
     @Column(nullable = false)
-    private Integer capacity; //정원
+    private Integer capacity;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private CourseOfferingStatus status; //개설 상태
+    private CourseOfferingStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
-    private StaffProfile createdBy; //개설 담당 교직원
+    private StaffProfile createdBy;
 }

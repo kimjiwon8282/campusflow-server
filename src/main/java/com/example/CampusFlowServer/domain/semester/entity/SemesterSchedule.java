@@ -1,7 +1,7 @@
-package com.example.CampusFlowServer.domain.academic.entity;
+package com.example.CampusFlowServer.domain.semester.entity;
 
-import com.example.CampusFlowServer.domain.academic.enums.SemesterScheduleType;
-import com.example.CampusFlowServer.domain.common.BaseEntity;
+import com.example.CampusFlowServer.domain.semester.enums.SemesterScheduleType;
+import com.example.CampusFlowServer.global.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -36,18 +36,18 @@ public class SemesterSchedule extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "semester_id", nullable = false)
-    private Semester semester; //대상 학기
+    private Semester semester;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private SemesterScheduleType type; //일정 유형
+    private SemesterScheduleType type;
 
     private LocalDateTime startAt;
 
     private LocalDateTime endAt;
 
-    private LocalDateTime openAt; //공개 일시
+    private LocalDateTime openAt;
 
     @Column(nullable = false)
-    private boolean alwaysOpen = false; //상시 공개 여부
+    private boolean alwaysOpen = false;
 }
