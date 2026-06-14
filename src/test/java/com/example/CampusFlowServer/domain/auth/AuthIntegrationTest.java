@@ -3,7 +3,6 @@ package com.example.CampusFlowServer.domain.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -42,6 +41,7 @@ class AuthIntegrationTest {
     private static final String ACCESS_TOKEN_COOKIE = "ACCESS_TOKEN";
     private static final String REFRESH_TOKEN_COOKIE = "REFRESH_TOKEN";
     private static final String CSRF_COOKIE = "XSRF-TOKEN";
+    private static final String CSRF_HEADER = "X-XSRF-TOKEN";
     private static final String PASSWORD = "password123!";
 
     @Autowired
@@ -61,11 +61,13 @@ class AuthIntegrationTest {
 
     @Test
     void csrfTokenIsIssued() throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/v1/csrf"))
+        MvcResult result = mockMvc.perform(apiGet("/api/v1/csrf"))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.message").value("CSRF token issued"))
             .andReturn();
 
         assertThat(extractSetCookieValue(result, CSRF_COOKIE)).isNotBlank();
+        assertThat(countSetCookies(result, CSRF_COOKIE)).isOne();
     }
 
     @Test
@@ -124,9 +126,10 @@ class AuthIntegrationTest {
 
         Thread.sleep(1100);
 
+        Cookie csrfCookie = getCsrfCookie();
         MvcResult reissueResult = mockMvc.perform(apiPost("/api/v1/auth/reissue")
-                .cookie(extractResponseCookie(loginResult, REFRESH_TOKEN_COOKIE))
-                .with(csrf().asHeader()))
+                .cookie(extractResponseCookie(loginResult, REFRESH_TOKEN_COOKIE), csrfCookie)
+                .header(CSRF_HEADER, csrfCookie.getValue()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.message").value("Token reissued"))
             .andReturn();
@@ -147,9 +150,10 @@ class AuthIntegrationTest {
             .andReturn();
         String refreshToken = extractSetCookieValue(loginResult, REFRESH_TOKEN_COOKIE);
 
+        Cookie csrfCookie = getCsrfCookie();
         MvcResult logoutResult = mockMvc.perform(apiPost("/api/v1/auth/logout")
-                .cookie(extractResponseCookie(loginResult, REFRESH_TOKEN_COOKIE))
-                .with(csrf().asHeader()))
+                .cookie(extractResponseCookie(loginResult, REFRESH_TOKEN_COOKIE), csrfCookie)
+                .header(CSRF_HEADER, csrfCookie.getValue()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.message").value("Logged out"))
             .andReturn();
@@ -190,7 +194,7 @@ class AuthIntegrationTest {
     }
 
     private Cookie getCsrfCookie() throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/v1/csrf"))
+        MvcResult result = mockMvc.perform(apiGet("/api/v1/csrf"))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -198,8 +202,11 @@ class AuthIntegrationTest {
     }
 
     private org.springframework.test.web.servlet.ResultActions login(String loginId) throws Exception {
+        Cookie csrfCookie = getCsrfCookie();
+
         return mockMvc.perform(apiPost("/api/v1/auth/login")
-            .with(csrf().asHeader())
+            .cookie(csrfCookie)
+            .header(CSRF_HEADER, csrfCookie.getValue())
             .header(HttpHeaders.USER_AGENT, "MockMvc")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -216,10 +223,19 @@ class AuthIntegrationTest {
     }
 
     private Cookie extractResponseCookie(MvcResult result, String cookieName) {
-        return new Cookie(cookieName, extractSetCookieValue(result, cookieName));
+        Cookie cookie = result.getResponse().getCookie(cookieName);
+        if (cookie != null) {
+            return cookie;
+        }
+
+        return new Cookie(cookieName, extractHeaderCookieValue(result, cookieName));
     }
 
     private String extractSetCookieValue(MvcResult result, String cookieName) {
+        return extractResponseCookie(result, cookieName).getValue();
+    }
+
+    private String extractHeaderCookieValue(MvcResult result, String cookieName) {
         String setCookie = findSetCookie(result, cookieName);
         return setCookie.substring((cookieName + "=").length(), setCookie.indexOf(';'));
     }
@@ -230,5 +246,11 @@ class AuthIntegrationTest {
             .filter(header -> header.startsWith(cookieName + "="))
             .findFirst()
             .orElseThrow(() -> new AssertionError("Missing Set-Cookie: " + cookieName));
+    }
+
+    private long countSetCookies(MvcResult result, String cookieName) {
+        return List.of(result.getResponse().getCookies()).stream()
+            .filter(cookie -> cookieName.equals(cookie.getName()))
+            .count();
     }
 }

@@ -45,4 +45,15 @@ public class Member extends BaseEntity {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    private Member(String loginId, String password, String name, MemberRole role) {
+        this.loginId = loginId;
+        this.password = password;
+        this.name = name;
+        this.role = role;
+    }
+
+    public static Member create(String loginId, String password, String name, MemberRole role) {
+        return new Member(loginId, password, name, role);
+    }
 }

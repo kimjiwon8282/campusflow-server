@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import org.springframework.security.web.csrf.DeferredCsrfToken;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -27,6 +28,11 @@ public class CsrfCookieFilter extends OncePerRequestFilter {
     }
 
     private CsrfToken resolveCsrfToken(HttpServletRequest request) {
+        Object deferredCsrfToken = request.getAttribute(DeferredCsrfToken.class.getName());
+        if (deferredCsrfToken instanceof DeferredCsrfToken token) {
+            return token.get();
+        }
+
         Object csrfToken = request.getAttribute(CsrfToken.class.getName());
         if (csrfToken instanceof CsrfToken token) {
             return token;
