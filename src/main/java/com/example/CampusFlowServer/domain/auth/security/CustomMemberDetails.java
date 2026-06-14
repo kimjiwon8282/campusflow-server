@@ -20,12 +20,39 @@ public class CustomMemberDetails implements UserDetails {
     private final boolean active;
 
     public CustomMemberDetails(Member member) {
-        this.memberId = member.getId();
-        this.loginId = member.getLoginId();
-        this.password = member.getPassword();
-        this.name = member.getName();
-        this.role = member.getRole();
-        this.active = member.isActive();
+        this(
+            member.getId(),
+            member.getLoginId(),
+            member.getPassword(),
+            member.getName(),
+            member.getRole(),
+            member.isActive()
+        );
+    }
+
+    private CustomMemberDetails(
+        Long memberId,
+        String loginId,
+        String password,
+        String name,
+        MemberRole role,
+        boolean active
+    ) {
+        this.memberId = memberId;
+        this.loginId = loginId;
+        this.password = password;
+        this.name = name;
+        this.role = role;
+        this.active = active;
+    }
+
+    public static CustomMemberDetails fromToken(
+        Long memberId,
+        String loginId,
+        String name,
+        MemberRole role
+    ) {
+        return new CustomMemberDetails(memberId, loginId, "", name, role, true);
     }
 
     @Override

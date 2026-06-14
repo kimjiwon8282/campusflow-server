@@ -1,0 +1,54 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:campusflow-test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
+        show_sql: false
+    open-in-view: false
+    show-sql: false
+
+app:
+  jwt:
+    access-secret: test-access-secret-key-for-hs256-must-be-long-enough
+    refresh-secret: test-refresh-secret-key-for-hs256-must-be-long-enough
+    access-token-validity-ms: 1800000
+    refresh-token-validity-ms: 1296000000
+
+  cookie:
+    access-token-name: ACCESS_TOKEN
+    refresh-token-name: REFRESH_TOKEN
+    csrf-token-name: XSRF-TOKEN
+    csrf-header-name: X-XSRF-TOKEN
+    secure: false
+    http-only: true
+    same-site: Lax
+    access-token-max-age-seconds: 1800
+    refresh-token-max-age-seconds: 1296000
+
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    allowed-headers:
+      - "*"
+    allow-credentials: true
+
+  refresh-token-cleanup:
+    enabled: false
+    cron: "0 0 * * * *"
+    revoked-retention-days: 7

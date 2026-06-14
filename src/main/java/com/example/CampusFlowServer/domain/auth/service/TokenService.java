@@ -35,6 +35,14 @@ public class TokenService {
     }
 
     @Transactional
+    public TokenPair issueTokens(Long memberId, String userAgent, String ipAddress) {
+        Member member = memberRepository.findById(memberId)
+            .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_TOKEN));
+
+        return issueTokens(member, userAgent, ipAddress);
+    }
+
+    @Transactional
     public TokenPair reissue(String rawRefreshToken, String userAgent, String ipAddress) {
         if (!StringUtils.hasText(rawRefreshToken)) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
