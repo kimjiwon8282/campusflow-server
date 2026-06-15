@@ -1,7 +1,7 @@
 spring:
   config:
     activate:
-      on-profile: local
+      on-profile: perf
 
   datasource:
     url: ${DB_URL}
@@ -41,7 +41,7 @@ app:
     csrf-token-name: ${CSRF_TOKEN_COOKIE_NAME:XSRF-TOKEN}
     csrf-header-name: ${CSRF_HEADER_NAME:X-XSRF-TOKEN}
     secure: ${COOKIE_SECURE:false}
-    http-only: ${COOKIE_HTTP_ONLY:true}
+    http-only: true
     same-site: ${COOKIE_SAME_SITE:Lax}
     access-token-max-age-seconds: ${ACCESS_TOKEN_COOKIE_MAX_AGE_SECONDS:1800}
     refresh-token-max-age-seconds: ${REFRESH_TOKEN_COOKIE_MAX_AGE_SECONDS:1296000}
@@ -53,6 +53,6 @@ app:
     allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
 
   refresh-token-cleanup:
-    enabled: ${REFRESH_TOKEN_CLEANUP_ENABLED}
-    cron: ${REFRESH_TOKEN_CLEANUP_CRON}
-    revoked-retention-days: ${REFRESH_TOKEN_REVOKED_RETENTION_DAYS}
+    enabled: ${REFRESH_TOKEN_CLEANUP_ENABLED:false}
+    cron: ${REFRESH_TOKEN_CLEANUP_CRON:0 0 * * * *}
+    revoked-retention-days: ${REFRESH_TOKEN_REVOKED_RETENTION_DAYS:7}

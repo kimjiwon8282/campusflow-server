@@ -52,4 +52,43 @@ public class CourseOffering extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private StaffProfile createdBy;
+
+    private CourseOffering(
+        Semester semester,
+        Subject subject,
+        ProfessorProfile professor,
+        Integer capacity,
+        CourseOfferingStatus status,
+        StaffProfile createdBy
+    ) {
+        this.semester = semester;
+        this.subject = subject;
+        this.professor = professor;
+        this.capacity = capacity;
+        this.status = status;
+        this.createdBy = createdBy;
+    }
+
+    public static CourseOffering create(
+        Semester semester,
+        Subject subject,
+        ProfessorProfile professor,
+        Integer capacity,
+        CourseOfferingStatus status,
+        StaffProfile createdBy
+    ) {
+        return new CourseOffering(semester, subject, professor, capacity, status, createdBy);
+    }
+
+    public void updateForDummyData(
+        ProfessorProfile professor,
+        Integer capacity,
+        CourseOfferingStatus status,
+        StaffProfile createdBy
+    ) {
+        this.professor = professor;
+        this.capacity = capacity;
+        this.status = status;
+        this.createdBy = createdBy;
+    }
 }

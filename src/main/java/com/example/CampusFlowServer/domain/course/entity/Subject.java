@@ -53,4 +53,28 @@ public class Subject extends BaseEntity {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    private Subject(
+        String code,
+        String name,
+        Department department,
+        Integer credit,
+        SubjectCategory category
+    ) {
+        this.code = code;
+        this.name = name;
+        this.department = department;
+        this.credit = credit;
+        this.category = category;
+    }
+
+    public static Subject create(
+        String code,
+        String name,
+        Department department,
+        Integer credit,
+        SubjectCategory category
+    ) {
+        return new Subject(code, name, department, credit, category);
+    }
 }

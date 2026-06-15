@@ -51,4 +51,28 @@ public class StaffProfile extends BaseEntity {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    private StaffProfile(
+        Member member,
+        String staffNo,
+        Department department,
+        String position,
+        String responsibility
+    ) {
+        this.member = member;
+        this.staffNo = staffNo;
+        this.department = department;
+        this.position = position;
+        this.responsibility = responsibility;
+    }
+
+    public static StaffProfile create(
+        Member member,
+        String staffNo,
+        Department department,
+        String position,
+        String responsibility
+    ) {
+        return new StaffProfile(member, staffNo, department, position, responsibility);
+    }
 }

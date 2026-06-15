@@ -55,4 +55,35 @@ public class StudentProfile extends BaseEntity {
 
     @Column(name = "max_credit")
     private Integer maxCredit;
+
+    private StudentProfile(
+        Member member,
+        String studentNo,
+        Department department,
+        Integer grade,
+        AcademicStatus academicStatus,
+        Integer maxCredit
+    ) {
+        this.member = member;
+        this.studentNo = studentNo;
+        this.department = department;
+        this.grade = grade;
+        this.academicStatus = academicStatus;
+        this.maxCredit = maxCredit;
+    }
+
+    public static StudentProfile create(
+        Member member,
+        String studentNo,
+        Department department,
+        Integer grade,
+        AcademicStatus academicStatus,
+        Integer maxCredit
+    ) {
+        return new StudentProfile(member, studentNo, department, grade, academicStatus, maxCredit);
+    }
+
+    public void changeMaxCredit(Integer maxCredit) {
+        this.maxCredit = maxCredit;
+    }
 }

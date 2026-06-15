@@ -40,4 +40,25 @@ public class CourseTime extends BaseEntity {
 
     @Column(nullable = false)
     private Integer endPeriod;
+
+    private CourseTime(
+        CourseOffering courseOffering,
+        DayOfWeek dayOfWeek,
+        Integer startPeriod,
+        Integer endPeriod
+    ) {
+        this.courseOffering = courseOffering;
+        this.dayOfWeek = dayOfWeek;
+        this.startPeriod = startPeriod;
+        this.endPeriod = endPeriod;
+    }
+
+    public static CourseTime create(
+        CourseOffering courseOffering,
+        DayOfWeek dayOfWeek,
+        Integer startPeriod,
+        Integer endPeriod
+    ) {
+        return new CourseTime(courseOffering, dayOfWeek, startPeriod, endPeriod);
+    }
 }

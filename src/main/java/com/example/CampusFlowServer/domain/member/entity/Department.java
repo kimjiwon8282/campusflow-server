@@ -2,13 +2,7 @@ package com.example.CampusFlowServer.domain.member.entity;
 
 import com.example.CampusFlowServer.global.common.BaseEntity;
 import com.example.CampusFlowServer.domain.member.enums.DepartmentType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,6 +10,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "departments")
 public class Department extends BaseEntity {
 
     @Id
@@ -33,4 +28,14 @@ public class Department extends BaseEntity {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    private Department(String name, String collegeName, DepartmentType type) {
+        this.name = name;
+        this.collegeName = collegeName;
+        this.type = type;
+    }
+
+    public static Department create(String name, String collegeName, DepartmentType type) {
+        return new Department(name, collegeName, type);
+    }
 }

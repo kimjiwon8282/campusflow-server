@@ -50,4 +50,38 @@ public class SemesterSchedule extends BaseEntity {
 
     @Column(nullable = false)
     private boolean alwaysOpen = false;
+
+    private SemesterSchedule(
+        Semester semester,
+        SemesterScheduleType type,
+        LocalDateTime startAt,
+        LocalDateTime endAt,
+        LocalDateTime openAt,
+        boolean alwaysOpen
+    ) {
+        this.semester = semester;
+        this.type = type;
+        this.startAt = startAt;
+        this.endAt = endAt;
+        this.openAt = openAt;
+        this.alwaysOpen = alwaysOpen;
+    }
+
+    public static SemesterSchedule create(
+        Semester semester,
+        SemesterScheduleType type,
+        LocalDateTime startAt,
+        LocalDateTime endAt,
+        LocalDateTime openAt,
+        boolean alwaysOpen
+    ) {
+        return new SemesterSchedule(semester, type, startAt, endAt, openAt, alwaysOpen);
+    }
+
+    public void updatePeriod(LocalDateTime startAt, LocalDateTime endAt, LocalDateTime openAt) {
+        this.startAt = startAt;
+        this.endAt = endAt;
+        this.openAt = openAt;
+        this.alwaysOpen = false;
+    }
 }

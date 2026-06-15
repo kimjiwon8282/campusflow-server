@@ -48,4 +48,24 @@ public class ProfessorProfile extends BaseEntity {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    private ProfessorProfile(Member member, String professorNo, Department department, String position) {
+        this.member = member;
+        this.professorNo = professorNo;
+        this.department = department;
+        this.position = position;
+    }
+
+    public static ProfessorProfile create(
+        Member member,
+        String professorNo,
+        Department department,
+        String position
+    ) {
+        return new ProfessorProfile(member, professorNo, department, position);
+    }
+
+    public void changeDepartment(Department department) {
+        this.department = department;
+    }
 }

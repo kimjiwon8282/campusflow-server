@@ -19,10 +19,13 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
-    name = "semesters",
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uk_semester_year_term", columnNames = {"year", "term"})
-    }
+        name = "semesters",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_semester_year_term",
+                        columnNames = {"academic_year", "term"}
+                )
+        }
 )
 public class Semester extends BaseEntity {
 
@@ -30,8 +33,9 @@ public class Semester extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "academic_year", nullable = false)
     private Integer year;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private SemesterTerm term;
@@ -43,4 +47,15 @@ public class Semester extends BaseEntity {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    private Semester(Integer year, SemesterTerm term, String name, Integer maxCredit) {
+        this.year = year;
+        this.term = term;
+        this.name = name;
+        this.maxCredit = maxCredit;
+    }
+
+    public static Semester create(Integer year, SemesterTerm term, String name, Integer maxCredit) {
+        return new Semester(year, term, name, maxCredit);
+    }
 }
