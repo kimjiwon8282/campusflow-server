@@ -21,6 +21,12 @@ public interface CourseOfferingRepository
     })
     List<CourseOffering> findAll(Specification<CourseOffering> specification);
 
+    @EntityGraph(attributePaths = {
+        "semester",
+        "subject"
+    })
+    List<CourseOffering> findBySemesterId(Long semesterId);
+
     Optional<CourseOffering> findBySemesterIdAndSubjectId(Long semesterId, Long subjectId);
 
     Optional<CourseOffering> findBySemesterIdAndSubjectIdAndProfessorId(

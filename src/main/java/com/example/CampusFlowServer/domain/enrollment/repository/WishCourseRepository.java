@@ -22,6 +22,11 @@ public interface WishCourseRepository extends JpaRepository<WishCourse, Long> {
     })
     List<WishCourse> findByStudentIdAndSemesterId(Long studentId, Long semesterId);
 
+    List<WishCourse> findByStudentIdInAndSemesterId(
+        Collection<Long> studentIds,
+        Long semesterId
+    );
+
     List<WishCourse> findByStudentIdAndCourseOfferingIdIn(
         Long studentId,
         Collection<Long> courseOfferingIds
