@@ -67,4 +67,38 @@ public class CompletedCourse extends BaseEntity {
     private boolean passed = true;
 
     private LocalDateTime completedAt;
+
+    private CompletedCourse(
+        StudentProfile student,
+        Subject subject,
+        Semester completedSemester,
+        String letterGrade,
+        boolean passed,
+        LocalDateTime completedAt
+    ) {
+        this.student = student;
+        this.subject = subject;
+        this.completedSemester = completedSemester;
+        this.letterGrade = letterGrade;
+        this.passed = passed;
+        this.completedAt = completedAt;
+    }
+
+    public static CompletedCourse create(
+        StudentProfile student,
+        Subject subject,
+        Semester completedSemester,
+        String letterGrade,
+        boolean passed,
+        LocalDateTime completedAt
+    ) {
+        return new CompletedCourse(
+            student,
+            subject,
+            completedSemester,
+            letterGrade,
+            passed,
+            completedAt
+        );
+    }
 }

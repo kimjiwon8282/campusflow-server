@@ -47,4 +47,13 @@ public class CourseAllowedGrade extends BaseEntity {
 
     @Column(name = "grade_level", nullable = false)
     private Integer gradeLevel;
+
+    private CourseAllowedGrade(CourseOffering courseOffering, Integer gradeLevel) {
+        this.courseOffering = courseOffering;
+        this.gradeLevel = gradeLevel;
+    }
+
+    public static CourseAllowedGrade create(CourseOffering courseOffering, Integer gradeLevel) {
+        return new CourseAllowedGrade(courseOffering, gradeLevel);
+    }
 }

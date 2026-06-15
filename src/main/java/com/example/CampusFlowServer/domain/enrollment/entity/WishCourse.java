@@ -71,4 +71,87 @@ public class WishCourse extends BaseEntity {
 
     @Column(length = 255)
     private String resultMessage;
+
+    private WishCourse(
+        StudentProfile student,
+        Semester semester,
+        CourseOffering courseOffering,
+        boolean autoApply,
+        WishAutoApplyResult result,
+        String resultMessage
+    ) {
+        this.student = student;
+        this.semester = semester;
+        this.courseOffering = courseOffering;
+        this.autoApply = autoApply;
+        this.result = result;
+        this.resultMessage = resultMessage;
+    }
+
+    public static WishCourse create(
+        StudentProfile student,
+        Semester semester,
+        CourseOffering courseOffering,
+        boolean autoApply,
+        WishAutoApplyResult result,
+        String resultMessage
+    ) {
+        return new WishCourse(
+            student,
+            semester,
+            courseOffering,
+            autoApply,
+            result == null ? defaultResult(autoApply) : result,
+            resultMessage
+        );
+    }
+
+    public void enableAutoApply() {
+        this.autoApply = true;
+        this.result = WishAutoApplyResult.PENDING;
+        this.resultMessage = null;
+    }
+
+    public void disableAutoApply() {
+        this.autoApply = false;
+        this.result = WishAutoApplyResult.NOT_SELECTED;
+        this.resultMessage = null;
+    }
+
+    public boolean isOwnedBy(StudentProfile student) {
+        return student != null
+            && this.student != null
+            && this.student.getId() != null
+            && this.student.getId().equals(student.getId());
+    }
+
+    public void markNotSelected(String message) {
+        this.autoApply = false;
+        this.result = WishAutoApplyResult.NOT_SELECTED;
+        this.resultMessage = message;
+    }
+
+    public void markDone(String message) {
+        this.result = WishAutoApplyResult.DONE;
+        this.resultMessage = message;
+    }
+
+    public void markOverCapacity(String message) {
+        this.result = WishAutoApplyResult.OVER_CAPACITY;
+        this.resultMessage = message;
+    }
+
+    public void markNeedsManual(String message) {
+        this.result = WishAutoApplyResult.NEEDS_MANUAL;
+        this.resultMessage = message;
+    }
+
+    public void markTimeConflict(String message) {
+        this.result = WishAutoApplyResult.TIME_CONFLICT;
+        this.resultMessage = message;
+    }
+
+    private static WishAutoApplyResult defaultResult(boolean autoApply) {
+        return autoApply ? WishAutoApplyResult.PENDING : WishAutoApplyResult.NOT_SELECTED;
+    }
 }

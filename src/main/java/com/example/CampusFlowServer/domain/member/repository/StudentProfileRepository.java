@@ -10,6 +10,8 @@ public interface StudentProfileRepository extends JpaRepository<StudentProfile, 
 
     boolean existsByMemberId(Long memberId);
 
+    Optional<StudentProfile> findByMemberId(Long memberId);
+
     Optional<StudentProfile> findByMember_LoginId(String loginId);
 
     List<StudentProfile> findByMember_LoginIdIn(Collection<String> loginIds);

@@ -51,4 +51,18 @@ public class CoursePrerequisite extends BaseEntity {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    private CoursePrerequisite(Subject subject, Subject prerequisiteSubject, boolean active) {
+        this.subject = subject;
+        this.prerequisiteSubject = prerequisiteSubject;
+        this.active = active;
+    }
+
+    public static CoursePrerequisite create(
+        Subject subject,
+        Subject prerequisiteSubject,
+        boolean active
+    ) {
+        return new CoursePrerequisite(subject, prerequisiteSubject, active);
+    }
 }
