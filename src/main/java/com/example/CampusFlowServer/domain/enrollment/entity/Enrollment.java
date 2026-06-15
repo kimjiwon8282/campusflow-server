@@ -79,4 +79,71 @@ public class Enrollment extends BaseEntity {
     private LocalDateTime appliedAt;
 
     private LocalDateTime cancelledAt;
+
+    private Enrollment(
+        StudentProfile student,
+        Semester semester,
+        CourseOffering courseOffering,
+        EnrollmentStatus status,
+        EnrollmentSource source,
+        Integer waitNumber,
+        LocalDateTime appliedAt,
+        LocalDateTime cancelledAt
+    ) {
+        this.student = student;
+        this.semester = semester;
+        this.courseOffering = courseOffering;
+        this.status = status;
+        this.source = source;
+        this.waitNumber = waitNumber;
+        this.appliedAt = appliedAt == null ? LocalDateTime.now() : appliedAt;
+        this.cancelledAt = cancelledAt;
+    }
+
+    public static Enrollment create(
+        StudentProfile student,
+        Semester semester,
+        CourseOffering courseOffering,
+        EnrollmentStatus status,
+        EnrollmentSource source,
+        Integer waitNumber,
+        LocalDateTime appliedAt
+    ) {
+        return new Enrollment(
+            student,
+            semester,
+            courseOffering,
+            status,
+            source,
+            waitNumber,
+            appliedAt,
+            null
+        );
+    }
+
+    public void reapply(
+        EnrollmentStatus status,
+        EnrollmentSource source,
+        Integer waitNumber,
+        LocalDateTime appliedAt
+    ) {
+        this.status = status;
+        this.source = source;
+        this.waitNumber = waitNumber;
+        this.appliedAt = appliedAt == null ? LocalDateTime.now() : appliedAt;
+        this.cancelledAt = null;
+    }
+
+    public void cancel(LocalDateTime cancelledAt) {
+        this.status = EnrollmentStatus.CANCELLED;
+        this.waitNumber = null;
+        this.cancelledAt = cancelledAt == null ? LocalDateTime.now() : cancelledAt;
+    }
+
+    public void promoteToEnrolled(LocalDateTime appliedAt) {
+        this.status = EnrollmentStatus.ENROLLED;
+        this.waitNumber = null;
+        this.appliedAt = appliedAt == null ? LocalDateTime.now() : appliedAt;
+        this.cancelledAt = null;
+    }
 }

@@ -1,6 +1,7 @@
 package com.example.CampusFlowServer.domain.enrollment.repository;
 
 import com.example.CampusFlowServer.domain.enrollment.entity.WishCourse;
+import com.example.CampusFlowServer.domain.enrollment.enums.WishAutoApplyResult;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +44,21 @@ public interface WishCourseRepository extends JpaRepository<WishCourse, Long> {
     })
     List<WishCourse> findByCourseOfferingIdInAndAutoApplyTrue(
         Collection<Long> courseOfferingIds
+    );
+
+    @EntityGraph(attributePaths = {
+        "semester",
+        "student",
+        "student.member",
+        "courseOffering",
+        "courseOffering.subject",
+        "courseOffering.subject.department",
+        "courseOffering.professor",
+        "courseOffering.professor.member"
+    })
+    List<WishCourse> findBySemesterIdAndAutoApplyTrueAndResult(
+        Long semesterId,
+        WishAutoApplyResult result
     );
 
     boolean existsByStudentIdAndSemesterIdAndCourseOfferingId(

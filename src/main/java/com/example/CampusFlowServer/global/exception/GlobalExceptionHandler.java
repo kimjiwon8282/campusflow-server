@@ -4,6 +4,8 @@ import com.example.CampusFlowServer.domain.auth.exception.AuthErrorCode;
 import com.example.CampusFlowServer.domain.auth.exception.AuthException;
 import com.example.CampusFlowServer.domain.student.catalog.exception.StudentCatalogErrorCode;
 import com.example.CampusFlowServer.domain.student.catalog.exception.StudentCatalogException;
+import com.example.CampusFlowServer.domain.student.enrollment.exception.StudentEnrollmentErrorCode;
+import com.example.CampusFlowServer.domain.student.enrollment.exception.StudentEnrollmentException;
 import com.example.CampusFlowServer.domain.student.wishcourse.exception.StudentWishCourseErrorCode;
 import com.example.CampusFlowServer.domain.student.wishcourse.exception.StudentWishCourseException;
 import java.util.Map;
@@ -42,6 +44,18 @@ public class GlobalExceptionHandler {
         StudentWishCourseException e
     ) {
         StudentWishCourseErrorCode errorCode = e.getErrorCode();
+        return errorResponse(
+            errorCode.getStatus(),
+            errorCode.getCode(),
+            errorCode.getMessage()
+        );
+    }
+
+    @ExceptionHandler(StudentEnrollmentException.class)
+    public ResponseEntity<Map<String, String>> handleStudentEnrollmentException(
+        StudentEnrollmentException e
+    ) {
+        StudentEnrollmentErrorCode errorCode = e.getErrorCode();
         return errorResponse(
             errorCode.getStatus(),
             errorCode.getCode(),
