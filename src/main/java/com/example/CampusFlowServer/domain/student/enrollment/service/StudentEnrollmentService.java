@@ -91,8 +91,8 @@ public class StudentEnrollmentService {
             );
         }
 
-        StudentProfile student = findStudent(memberId);
         CourseOffering offering = findCourseOfferingForUpdate(request.courseOfferingId());
+        StudentProfile student = findStudent(memberId);
         Semester semester = offering.getSemester();
 
         validateEnrollmentPeriod(semester);
