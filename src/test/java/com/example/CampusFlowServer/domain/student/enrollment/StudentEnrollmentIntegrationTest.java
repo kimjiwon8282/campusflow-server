@@ -794,7 +794,7 @@ class StudentEnrollmentIntegrationTest {
                 .param("year", "2026")
                 .param("term", "FIRST"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.summary.semesterName").value("2026 FIRST summary"))
+            .andExpect(jsonPath("$.summary.semesterName").value(fixture.semester().getName()))
             .andExpect(jsonPath("$.summary.currentCredit").value(3))
             .andExpect(jsonPath("$.summary.maxCredit").value(18))
             .andExpect(jsonPath("$.summary.remainingCredit").value(15))
@@ -926,9 +926,10 @@ class StudentEnrollmentIntegrationTest {
         StaffProfile staffProfile = staffProfileRepository.saveAndFlush(
             StaffProfile.create(staff, "ET-" + suffix, department, "Staff", "Courses")
         );
-        Semester semester = semesterRepository.saveAndFlush(
-            Semester.create(2026, SemesterTerm.FIRST, "2026 FIRST " + suffix, 18)
-        );
+        Semester semester = semesterRepository.findByYearAndTerm(2026, SemesterTerm.FIRST)
+            .orElseGet(() -> semesterRepository.saveAndFlush(
+                Semester.create(2026, SemesterTerm.FIRST, "2026 FIRST " + suffix, 18)
+            ));
         Subject subject = subjectRepository.saveAndFlush(Subject.create(
             "ENR101-" + suffix,
             "Data Structures",
@@ -1097,14 +1098,22 @@ class StudentEnrollmentIntegrationTest {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startAt = open ? now.minusDays(1) : now.minusDays(3);
         LocalDateTime endAt = open ? now.plusDays(1) : now.minusDays(1);
-        return semesterScheduleRepository.saveAndFlush(SemesterSchedule.create(
-            semester,
-            SemesterScheduleType.ENROLLMENT,
-            startAt,
-            endAt,
-            null,
-            false
-        ));
+        return semesterScheduleRepository.findBySemesterIdAndType(
+                semester.getId(),
+                SemesterScheduleType.ENROLLMENT
+            )
+            .map(schedule -> {
+                schedule.updatePeriod(startAt, endAt, null);
+                return semesterScheduleRepository.saveAndFlush(schedule);
+            })
+            .orElseGet(() -> semesterScheduleRepository.saveAndFlush(SemesterSchedule.create(
+                semester,
+                SemesterScheduleType.ENROLLMENT,
+                startAt,
+                endAt,
+                null,
+                false
+            )));
     }
 
     private CourseAllowedGrade saveAllowedGrade(CourseOffering courseOffering, Integer gradeLevel) {

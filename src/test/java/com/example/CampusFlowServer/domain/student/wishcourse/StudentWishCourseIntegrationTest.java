@@ -1502,9 +1502,10 @@ class StudentWishCourseIntegrationTest {
         StaffProfile staffProfile = staffProfileRepository.saveAndFlush(
             StaffProfile.create(staff, "WT-" + suffix, department, "Staff", "Courses")
         );
-        Semester semester = semesterRepository.saveAndFlush(
-            Semester.create(2026, SemesterTerm.FIRST, "2026 FIRST", 18)
-        );
+        Semester semester = semesterRepository.findByYearAndTerm(2026, SemesterTerm.FIRST)
+            .orElseGet(() -> semesterRepository.saveAndFlush(
+                Semester.create(2026, SemesterTerm.FIRST, "2026 FIRST", 18)
+            ));
         Subject subject = subjectRepository.saveAndFlush(Subject.create(
             "WISH101-" + suffix,
             "Data Structures",

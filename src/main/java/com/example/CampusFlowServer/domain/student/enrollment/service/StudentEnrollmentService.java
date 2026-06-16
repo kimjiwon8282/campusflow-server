@@ -92,7 +92,7 @@ public class StudentEnrollmentService {
         }
 
         StudentProfile student = findStudent(memberId);
-        CourseOffering offering = findCourseOffering(request.courseOfferingId());
+        CourseOffering offering = findCourseOfferingForUpdate(request.courseOfferingId());
         Semester semester = offering.getSemester();
 
         validateEnrollmentPeriod(semester);
@@ -133,7 +133,8 @@ public class StudentEnrollmentService {
                 StudentEnrollmentErrorCode.ENROLLMENT_NOT_FOUND
             ));
         validateEnrollmentOwner(enrollment, student);
-        validateEnrollmentPeriod(enrollment.getSemester());
+        CourseOffering offering = findCourseOfferingForUpdate(enrollment.getCourseOffering().getId());
+        validateEnrollmentPeriod(offering.getSemester());
 
         if (EnrollmentStatus.CANCELLED.equals(enrollment.getStatus())) {
             throw new StudentEnrollmentException(
@@ -149,7 +150,7 @@ public class StudentEnrollmentService {
         boolean wasEnrolled = EnrollmentStatus.ENROLLED.equals(enrollment.getStatus());
         enrollment.cancel(LocalDateTime.now());
         Long promotedEnrollmentId = wasEnrolled
-            ? promoteFirstWaitingIfEligible(enrollment.getCourseOffering())
+            ? promoteFirstWaitingIfEligible(offering)
             : null;
 
         return new StudentEnrollmentCancelResponse(
@@ -374,6 +375,13 @@ public class StudentEnrollmentService {
 
     private CourseOffering findCourseOffering(Long courseOfferingId) {
         return courseOfferingRepository.findById(courseOfferingId)
+            .orElseThrow(() -> new StudentEnrollmentException(
+                StudentEnrollmentErrorCode.COURSE_OFFERING_NOT_FOUND
+            ));
+    }
+
+    private CourseOffering findCourseOfferingForUpdate(Long courseOfferingId) {
+        return courseOfferingRepository.findByIdForUpdate(courseOfferingId)
             .orElseThrow(() -> new StudentEnrollmentException(
                 StudentEnrollmentErrorCode.COURSE_OFFERING_NOT_FOUND
             ));
