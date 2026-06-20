@@ -184,7 +184,7 @@ public class StudentEnrollmentService {
         if (enrollments.isEmpty()) {
             int maxCredit = maxCredit(student, semester);
             return new StudentEnrollmentListResponse(
-                new StudentEnrollmentSummaryResponse(semester.getName(), 0, maxCredit, maxCredit, 0, 0),
+                new StudentEnrollmentSummaryResponse(semester.getName(), 0, 0, maxCredit, maxCredit, 0, 0),
                 List.of(),
                 List.of()
             );
@@ -217,13 +217,17 @@ public class StudentEnrollmentService {
         int currentCredit = enrolledCourses.stream()
             .mapToInt(StudentEnrolledCourseResponse::credit)
             .sum();
+        int activeCredit = enrollments.stream()
+            .mapToInt(enrollment -> enrollment.getCourseOffering().getSubject().getCredit())
+            .sum();
         int maxCredit = maxCredit(student, semester);
         return new StudentEnrollmentListResponse(
             new StudentEnrollmentSummaryResponse(
                 semester.getName(),
                 currentCredit,
+                activeCredit,
                 maxCredit,
-                Math.max(0, maxCredit - currentCredit),
+                Math.max(0, maxCredit - activeCredit),
                 enrolledCourses.size(),
                 waitingCourses.size()
             ),
@@ -334,8 +338,8 @@ public class StudentEnrollmentService {
         Map<Long, List<CoursePrerequisite>> prerequisitesBySubjectId = prerequisites.stream()
             .collect(Collectors.groupingBy(prerequisite -> prerequisite.getSubject().getId()));
         Set<Long> completedSubjectIds = findCompletedSubjectIds(student, prerequisites);
-        List<CourseTime> myEnrolledTimes = findMyEnrolledCourseTimes(student, semester);
-        int currentCredit = currentEnrolledCredit(student, semester);
+        List<CourseTime> myActiveTimes = findMyActiveCourseTimes(student, semester);
+        int currentCredit = currentActiveCredit(student, semester);
         int maxCredit = maxCredit(student, semester);
         boolean enrollmentOpen = isEnrollmentOpen(semester);
 
@@ -348,7 +352,7 @@ public class StudentEnrollmentService {
                 allowedGradesByOfferingId.getOrDefault(offering.getId(), Set.of()),
                 prerequisitesBySubjectId.getOrDefault(offering.getSubject().getId(), List.of()),
                 completedSubjectIds,
-                myEnrolledTimes,
+                myActiveTimes,
                 student.getGrade(),
                 currentCredit,
                 maxCredit,
@@ -398,13 +402,23 @@ public class StudentEnrollmentService {
         return student.getMaxCredit() == null ? semester.getMaxCredit() : student.getMaxCredit();
     }
 
-    private int currentEnrolledCredit(StudentProfile student, Semester semester) {
+    private int currentActiveCredit(StudentProfile student, Semester semester) {
+        return currentActiveCredit(student, semester, null);
+    }
+
+    private int currentActiveCredit(
+        StudentProfile student,
+        Semester semester,
+        Long excludedEnrollmentId
+    ) {
         return enrollmentRepository.findByStudentIdAndSemesterIdAndStatusIn(
                 student.getId(),
                 semester.getId(),
-                List.of(EnrollmentStatus.ENROLLED)
+                ACTIVE_STATUSES
             )
             .stream()
+            .filter(enrollment -> excludedEnrollmentId == null
+                || !excludedEnrollmentId.equals(enrollment.getId()))
             .mapToInt(enrollment -> enrollment.getCourseOffering().getSubject().getCredit())
             .sum();
     }
@@ -492,7 +506,16 @@ public class StudentEnrollmentService {
         Semester semester,
         CourseOffering offering
     ) {
-        int currentCredit = currentEnrolledCredit(student, semester);
+        validateCreditLimit(student, semester, offering, null);
+    }
+
+    private void validateCreditLimit(
+        StudentProfile student,
+        Semester semester,
+        CourseOffering offering,
+        Long excludedEnrollmentId
+    ) {
+        int currentCredit = currentActiveCredit(student, semester, excludedEnrollmentId);
         int maxCredit = maxCredit(student, semester);
         if (currentCredit + offering.getSubject().getCredit() > maxCredit) {
             throw new StudentEnrollmentException(
@@ -506,10 +529,19 @@ public class StudentEnrollmentService {
         Semester semester,
         CourseOffering offering
     ) {
+        validateNoTimeConflict(student, semester, offering, null);
+    }
+
+    private void validateNoTimeConflict(
+        StudentProfile student,
+        Semester semester,
+        CourseOffering offering,
+        Long excludedEnrollmentId
+    ) {
         List<CourseTime> candidateTimes = findCourseTimesByOfferingId(List.of(offering.getId()))
             .getOrDefault(offering.getId(), List.of());
-        List<CourseTime> enrolledTimes = findMyEnrolledCourseTimes(student, semester);
-        if (hasTimeConflict(candidateTimes, enrolledTimes)) {
+        List<CourseTime> activeTimes = findMyActiveCourseTimes(student, semester, excludedEnrollmentId);
+        if (hasTimeConflict(candidateTimes, activeTimes)) {
             throw new StudentEnrollmentException(StudentEnrollmentErrorCode.TIME_CONFLICT);
         }
     }
@@ -553,8 +585,8 @@ public class StudentEnrollmentService {
         try {
             validateGradeAllowed(waitingStudent, offering);
             validatePrerequisites(waitingStudent, offering);
-            validateCreditLimit(waitingStudent, offering.getSemester(), offering);
-            validateNoTimeConflict(waitingStudent, offering.getSemester(), offering);
+            validateCreditLimit(waitingStudent, offering.getSemester(), offering, firstWaiting.getId());
+            validateNoTimeConflict(waitingStudent, offering.getSemester(), offering, firstWaiting.getId());
         } catch (StudentEnrollmentException ignored) {
             // Current policy: keep an ineligible first waiting enrollment as WAITING and
             // stop auto-promotion. Skipping to later waiters is deferred to a future step.
@@ -675,34 +707,27 @@ public class StudentEnrollmentService {
     }
 
     private List<CourseTime> findMyActiveCourseTimes(StudentProfile student, Semester semester) {
+        return findMyActiveCourseTimes(student, semester, null);
+    }
+
+    private List<CourseTime> findMyActiveCourseTimes(
+        StudentProfile student,
+        Semester semester,
+        Long excludedEnrollmentId
+    ) {
         List<Enrollment> enrollments = enrollmentRepository.findByStudentIdAndSemesterIdAndStatusIn(
             student.getId(),
             semester.getId(),
             ACTIVE_STATUSES
         );
-        if (enrollments.isEmpty()) {
-            return List.of();
-        }
         List<Long> offeringIds = enrollments.stream()
+            .filter(enrollment -> excludedEnrollmentId == null
+                || !excludedEnrollmentId.equals(enrollment.getId()))
             .map(enrollment -> enrollment.getCourseOffering().getId())
             .toList();
-        return findCourseTimesByOfferingId(offeringIds).values().stream()
-            .flatMap(Collection::stream)
-            .toList();
-    }
-
-    private List<CourseTime> findMyEnrolledCourseTimes(StudentProfile student, Semester semester) {
-        List<Enrollment> enrollments = enrollmentRepository.findByStudentIdAndSemesterIdAndStatusIn(
-            student.getId(),
-            semester.getId(),
-            List.of(EnrollmentStatus.ENROLLED)
-        );
-        if (enrollments.isEmpty()) {
+        if (offeringIds.isEmpty()) {
             return List.of();
         }
-        List<Long> offeringIds = enrollments.stream()
-            .map(enrollment -> enrollment.getCourseOffering().getId())
-            .toList();
         return findCourseTimesByOfferingId(offeringIds).values().stream()
             .flatMap(Collection::stream)
             .toList();

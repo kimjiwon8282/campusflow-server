@@ -139,12 +139,12 @@ public class AutoEnrollmentService {
     ) {
         return isGradeAllowed(student, offering)
             && hasPrerequisites(student, offering)
-            && currentEnrolledCredit(student, semester) + offering.getSubject().getCredit()
+            && currentActiveCredit(student, semester) + offering.getSubject().getCredit()
                 <= maxCredit(student, semester)
             && !hasTimeConflict(
                 findCourseTimesByOfferingId(List.of(offering.getId()))
                     .getOrDefault(offering.getId(), List.of()),
-                findMyEnrolledCourseTimes(student, semester)
+                findMyActiveCourseTimes(student, semester)
             );
     }
 
@@ -173,11 +173,11 @@ public class AutoEnrollmentService {
         return student.getMaxCredit() == null ? semester.getMaxCredit() : student.getMaxCredit();
     }
 
-    private int currentEnrolledCredit(StudentProfile student, Semester semester) {
+    private int currentActiveCredit(StudentProfile student, Semester semester) {
         return enrollmentRepository.findByStudentIdAndSemesterIdAndStatusIn(
                 student.getId(),
                 semester.getId(),
-                List.of(EnrollmentStatus.ENROLLED)
+                ACTIVE_STATUSES
             )
             .stream()
             .mapToInt(enrollment -> enrollment.getCourseOffering().getSubject().getCredit())
@@ -226,11 +226,11 @@ public class AutoEnrollmentService {
             .collect(Collectors.toSet());
     }
 
-    private List<CourseTime> findMyEnrolledCourseTimes(StudentProfile student, Semester semester) {
+    private List<CourseTime> findMyActiveCourseTimes(StudentProfile student, Semester semester) {
         List<Enrollment> enrollments = enrollmentRepository.findByStudentIdAndSemesterIdAndStatusIn(
             student.getId(),
             semester.getId(),
-            List.of(EnrollmentStatus.ENROLLED)
+            ACTIVE_STATUSES
         );
         if (enrollments.isEmpty()) {
             return List.of();

@@ -408,11 +408,11 @@ class StudentEnrollmentIntegrationTest {
     }
 
     @Test
-    void waitingCourseTimeDoesNotCauseTimeConflictInCourseSearch() throws Exception {
-        EnrollmentFixture fixture = saveFixture("waiting-no-conflict");
+    void waitingCourseTimeCausesTimeConflictInCourseSearch() throws Exception {
+        EnrollmentFixture fixture = saveFixture("waiting-search-conflict");
         CourseOffering sameTimeOffering = saveOfferingWithTime(
             fixture,
-            "ENR102-waiting-no-conflict",
+            "ENR102-waiting-search-conflict",
             "Parallel Systems",
             30,
             DayOfWeek.MON,
@@ -436,7 +436,7 @@ class StudentEnrollmentIntegrationTest {
                 .param("subjectName", "Parallel Systems"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].courseOfferingId").value(sameTimeOffering.getId()))
-            .andExpect(jsonPath("$[0].status").value("AVAILABLE"));
+            .andExpect(jsonPath("$[0].status").value("TIME_CONFLICT"));
     }
 
     @Test
@@ -548,6 +548,7 @@ class StudentEnrollmentIntegrationTest {
                 .param("term", "FIRST"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.summary.currentCredit").value(3))
+            .andExpect(jsonPath("$.summary.activeCredit").value(3))
             .andExpect(jsonPath("$.enrolledCourses[0].source").value("AUTO"));
 
         mockMvc.perform(apiDelete("/api/v1/student/enrollments/" + autoEnrollment.getId())
@@ -561,6 +562,7 @@ class StudentEnrollmentIntegrationTest {
                 .param("term", "FIRST"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.summary.currentCredit").value(0))
+            .andExpect(jsonPath("$.summary.activeCredit").value(0))
             .andExpect(jsonPath("$.summary.remainingCredit").value(18));
     }
 
@@ -725,6 +727,39 @@ class StudentEnrollmentIntegrationTest {
     }
 
     @Test
+    void applyingCourseFailsWhenWaitingCreditExceedsLimit() throws Exception {
+        EnrollmentFixture fixture = saveFixture("waiting-credit-apply");
+        saveEnrollmentSchedule(fixture.semester(), true);
+        fixture.studentProfile().changeMaxCredit(3);
+        CourseOffering waitingOffering = saveOffering(
+            fixture,
+            "ENR102-waiting-credit-apply",
+            "Databases",
+            1,
+            DayOfWeek.WED
+        );
+        saveEnrollment(
+            fixture.studentProfile(),
+            fixture.semester(),
+            waitingOffering,
+            EnrollmentStatus.WAITING,
+            null
+        );
+        Cookie accessToken = login(fixture.student().getLoginId());
+        Cookie csrfCookie = getCsrfCookie();
+
+        mockMvc.perform(apiPost("/api/v1/student/enrollments")
+                .cookie(accessToken, csrfCookie)
+                .header(CSRF_HEADER, csrfCookie.getValue())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"courseOfferingId":%d}
+                    """.formatted(fixture.courseOffering().getId())))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("ENROLLMENT_012"));
+    }
+
+    @Test
     void applyingTimeConflictingCourseFails() throws Exception {
         EnrollmentFixture fixture = saveFixture("time-apply");
         saveEnrollmentSchedule(fixture.semester(), true);
@@ -750,6 +785,129 @@ class StudentEnrollmentIntegrationTest {
                     """.formatted(fixture.courseOffering().getId())))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("ENROLLMENT_013"));
+    }
+
+    @Test
+    void applyingCourseFailsWhenWaitingCourseTimeConflicts() throws Exception {
+        EnrollmentFixture fixture = saveFixture("waiting-time-apply");
+        saveEnrollmentSchedule(fixture.semester(), true);
+        CourseOffering waitingOffering = saveOfferingWithTime(
+            fixture,
+            "ENR102-waiting-time-apply",
+            "Operating Systems",
+            1,
+            DayOfWeek.MON,
+            2,
+            3
+        );
+        saveEnrollment(
+            fixture.studentProfile(),
+            fixture.semester(),
+            waitingOffering,
+            EnrollmentStatus.WAITING,
+            null
+        );
+        Cookie accessToken = login(fixture.student().getLoginId());
+        Cookie csrfCookie = getCsrfCookie();
+
+        mockMvc.perform(apiPost("/api/v1/student/enrollments")
+                .cookie(accessToken, csrfCookie)
+                .header(CSRF_HEADER, csrfCookie.getValue())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"courseOfferingId":%d}
+                    """.formatted(fixture.courseOffering().getId())))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("ENROLLMENT_013"));
+    }
+
+    @Test
+    void cancellingWaitingEnrollmentReleasesTimeConflictConstraint() throws Exception {
+        EnrollmentFixture fixture = saveFixture("waiting-cancel-release");
+        saveEnrollmentSchedule(fixture.semester(), true);
+        CourseOffering conflictingOffering = saveOfferingWithTime(
+            fixture,
+            "ENR102-waiting-cancel-release",
+            "Operating Systems",
+            30,
+            DayOfWeek.MON,
+            2,
+            3
+        );
+        Enrollment waiting = saveEnrollment(
+            fixture.studentProfile(),
+            fixture.semester(),
+            fixture.courseOffering(),
+            EnrollmentStatus.WAITING,
+            null
+        );
+        Cookie accessToken = login(fixture.student().getLoginId());
+        Cookie csrfCookie = getCsrfCookie();
+
+        mockMvc.perform(apiPost("/api/v1/student/enrollments")
+                .cookie(accessToken, csrfCookie)
+                .header(CSRF_HEADER, csrfCookie.getValue())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"courseOfferingId":%d}
+                    """.formatted(conflictingOffering.getId())))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("ENROLLMENT_013"));
+
+        mockMvc.perform(apiDelete("/api/v1/student/enrollments/" + waiting.getId())
+                .cookie(accessToken, csrfCookie)
+                .header(CSRF_HEADER, csrfCookie.getValue()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        mockMvc.perform(apiPost("/api/v1/student/enrollments")
+                .cookie(accessToken, csrfCookie)
+                .header(CSRF_HEADER, csrfCookie.getValue())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"courseOfferingId":%d}
+                    """.formatted(conflictingOffering.getId())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ENROLLED"));
+    }
+
+    @Test
+    void promotingWaitingEnrollmentExcludesItselfFromActiveValidation() throws Exception {
+        EnrollmentFixture fixture = saveFixture("promote-exclude-self");
+        saveEnrollmentSchedule(fixture.semester(), true);
+        fixture.otherStudentProfile().changeMaxCredit(3);
+        CourseOffering fullOffering = saveOffering(
+            fixture,
+            "ENR102-promote-exclude-self",
+            "Networks",
+            1,
+            DayOfWeek.TUE
+        );
+        Enrollment enrolled = saveEnrollment(
+            fixture.studentProfile(),
+            fixture.semester(),
+            fullOffering,
+            EnrollmentStatus.ENROLLED,
+            null
+        );
+        Enrollment waiting = saveEnrollment(
+            fixture.otherStudentProfile(),
+            fixture.semester(),
+            fullOffering,
+            EnrollmentStatus.WAITING,
+            null
+        );
+        Cookie accessToken = login(fixture.student().getLoginId());
+        Cookie csrfCookie = getCsrfCookie();
+
+        mockMvc.perform(apiDelete("/api/v1/student/enrollments/" + enrolled.getId())
+                .cookie(accessToken, csrfCookie)
+                .header(CSRF_HEADER, csrfCookie.getValue()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.promotedEnrollmentId").value(waiting.getId()));
+
+        assertThat(enrollmentRepository.findById(waiting.getId()).orElseThrow().getStatus())
+            .isEqualTo(EnrollmentStatus.ENROLLED);
     }
 
     @Test
@@ -796,8 +954,9 @@ class StudentEnrollmentIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.summary.semesterName").value(fixture.semester().getName()))
             .andExpect(jsonPath("$.summary.currentCredit").value(3))
+            .andExpect(jsonPath("$.summary.activeCredit").value(6))
             .andExpect(jsonPath("$.summary.maxCredit").value(18))
-            .andExpect(jsonPath("$.summary.remainingCredit").value(15))
+            .andExpect(jsonPath("$.summary.remainingCredit").value(12))
             .andExpect(jsonPath("$.summary.enrolledCount").value(1))
             .andExpect(jsonPath("$.summary.waitingCount").value(1))
             .andExpect(jsonPath("$.enrolledCourses[0].subjectCode").value("ENR101-summary"))
@@ -817,6 +976,7 @@ class StudentEnrollmentIntegrationTest {
                 .param("term", "FIRST"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.summary.currentCredit").value(0))
+            .andExpect(jsonPath("$.summary.activeCredit").value(0))
             .andExpect(jsonPath("$.enrolledCourses").isEmpty())
             .andExpect(jsonPath("$.waitingCourses").isEmpty());
     }
