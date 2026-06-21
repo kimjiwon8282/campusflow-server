@@ -52,9 +52,11 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -79,50 +81,14 @@ public class StudentEnrollmentService {
     private final StudentProfileRepository studentProfileRepository;
     private final SemesterRepository semesterRepository;
     private final SemesterScheduleRepository semesterScheduleRepository;
+    private final StudentEnrollmentApplyService studentEnrollmentApplyService;
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public StudentEnrollmentApplyResponse apply(
         Long memberId,
         StudentEnrollmentApplyRequest request
     ) {
-        if (request == null || request.courseOfferingId() == null) {
-            throw new StudentEnrollmentException(
-                StudentEnrollmentErrorCode.REQUIRED_COURSE_OFFERING
-            );
-        }
-
-        CourseOffering offering = findCourseOfferingForUpdate(request.courseOfferingId());
-        StudentProfile student = findStudent(memberId);
-        Semester semester = offering.getSemester();
-
-        validateEnrollmentPeriod(semester);
-        validateNotDuplicate(student, semester, offering);
-        validateGradeAllowed(student, offering);
-        validatePrerequisites(student, offering);
-        validateCreditLimit(student, semester, offering);
-        validateNoTimeConflict(student, semester, offering);
-
-        long enrolledCount = findEnrollmentStatsByOfferingId(List.of(offering.getId()))
-            .getOrDefault(offering.getId(), EnrollmentStats.EMPTY)
-            .enrolledCount();
-        EnrollmentStatus status = enrolledCount < offering.getCapacity()
-            ? EnrollmentStatus.ENROLLED
-            : EnrollmentStatus.WAITING;
-        Enrollment enrollment = saveOrReactivateEnrollment(student, semester, offering, status);
-        Integer waitNo = EnrollmentStatus.WAITING.equals(status) ? waitNo(enrollment) : null;
-
-        return new StudentEnrollmentApplyResponse(
-            enrollment.getId(),
-            offering.getId(),
-            offering.getSubject().getCode(),
-            offering.getSubject().getName(),
-            status.name(),
-            EnrollmentSource.MANUAL.name(),
-            waitNo,
-            EnrollmentStatus.ENROLLED.equals(status)
-                ? "수강신청이 완료되었습니다."
-                : "정원이 마감되어 대기 신청되었습니다."
-        );
+        return studentEnrollmentApplyService.apply(memberId, request);
     }
 
     @Transactional
@@ -411,16 +377,19 @@ public class StudentEnrollmentService {
         Semester semester,
         Long excludedEnrollmentId
     ) {
-        return enrollmentRepository.findByStudentIdAndSemesterIdAndStatusIn(
-                student.getId(),
-                semester.getId(),
-                ACTIVE_STATUSES
-            )
-            .stream()
+        return findActiveEnrollments(student, semester).stream()
             .filter(enrollment -> excludedEnrollmentId == null
                 || !excludedEnrollmentId.equals(enrollment.getId()))
             .mapToInt(enrollment -> enrollment.getCourseOffering().getSubject().getCredit())
             .sum();
+    }
+
+    private List<Enrollment> findActiveEnrollments(StudentProfile student, Semester semester) {
+        return enrollmentRepository.findByStudentIdAndSemesterIdAndStatusIn(
+            student.getId(),
+            semester.getId(),
+            ACTIVE_STATUSES
+        );
     }
 
     private boolean isEnrollmentOpen(Semester semester) {
@@ -471,6 +440,19 @@ public class StudentEnrollmentService {
         }
     }
 
+    private void validateNotDuplicate(
+        List<Enrollment> activeEnrollments,
+        CourseOffering offering
+    ) {
+        boolean duplicate = activeEnrollments.stream()
+            .anyMatch(enrollment -> enrollment.getCourseOffering().getId().equals(offering.getId()));
+        if (duplicate) {
+            throw new StudentEnrollmentException(
+                StudentEnrollmentErrorCode.DUPLICATE_ENROLLMENT
+            );
+        }
+    }
+
     private void validateEnrollmentOwner(Enrollment enrollment, StudentProfile student) {
         if (!enrollment.getStudent().getId().equals(student.getId())) {
             throw new StudentEnrollmentException(
@@ -506,7 +488,7 @@ public class StudentEnrollmentService {
         Semester semester,
         CourseOffering offering
     ) {
-        validateCreditLimit(student, semester, offering, null);
+        validateCreditLimit(student, semester, offering, (Long) null);
     }
 
     private void validateCreditLimit(
@@ -516,6 +498,23 @@ public class StudentEnrollmentService {
         Long excludedEnrollmentId
     ) {
         int currentCredit = currentActiveCredit(student, semester, excludedEnrollmentId);
+        int maxCredit = maxCredit(student, semester);
+        if (currentCredit + offering.getSubject().getCredit() > maxCredit) {
+            throw new StudentEnrollmentException(
+                StudentEnrollmentErrorCode.CREDIT_LIMIT_EXCEEDED
+            );
+        }
+    }
+
+    private void validateCreditLimit(
+        StudentProfile student,
+        Semester semester,
+        CourseOffering offering,
+        List<Enrollment> activeEnrollments
+    ) {
+        int currentCredit = activeEnrollments.stream()
+            .mapToInt(enrollment -> enrollment.getCourseOffering().getSubject().getCredit())
+            .sum();
         int maxCredit = maxCredit(student, semester);
         if (currentCredit + offering.getSubject().getCredit() > maxCredit) {
             throw new StudentEnrollmentException(
@@ -541,6 +540,31 @@ public class StudentEnrollmentService {
         List<CourseTime> candidateTimes = findCourseTimesByOfferingId(List.of(offering.getId()))
             .getOrDefault(offering.getId(), List.of());
         List<CourseTime> activeTimes = findMyActiveCourseTimes(student, semester, excludedEnrollmentId);
+        if (hasTimeConflict(candidateTimes, activeTimes)) {
+            throw new StudentEnrollmentException(StudentEnrollmentErrorCode.TIME_CONFLICT);
+        }
+    }
+
+    private void validateNoTimeConflict(
+        CourseOffering offering,
+        List<Enrollment> activeEnrollments
+    ) {
+        List<Long> offeringIds = Stream.concat(
+                Stream.of(offering.getId()),
+                activeEnrollments.stream()
+                    .map(enrollment -> enrollment.getCourseOffering().getId())
+            )
+            .distinct()
+            .toList();
+        Map<Long, List<CourseTime>> timesByOfferingId = findCourseTimesByOfferingId(offeringIds);
+        List<CourseTime> candidateTimes = timesByOfferingId.getOrDefault(offering.getId(), List.of());
+        List<CourseTime> activeTimes = activeEnrollments.stream()
+            .map(enrollment -> timesByOfferingId.getOrDefault(
+                enrollment.getCourseOffering().getId(),
+                List.of()
+            ))
+            .flatMap(Collection::stream)
+            .toList();
         if (hasTimeConflict(candidateTimes, activeTimes)) {
             throw new StudentEnrollmentException(StudentEnrollmentErrorCode.TIME_CONFLICT);
         }

@@ -48,10 +48,17 @@ import com.example.CampusFlowServer.domain.semester.enums.SemesterTerm;
 import com.example.CampusFlowServer.domain.semester.enums.SemesterScheduleType;
 import com.example.CampusFlowServer.domain.semester.repository.SemesterRepository;
 import com.example.CampusFlowServer.domain.semester.repository.SemesterScheduleRepository;
+import com.example.CampusFlowServer.domain.student.enrollment.dto.StudentEnrollmentApplyRequest;
+import com.example.CampusFlowServer.domain.student.enrollment.service.StudentEnrollmentApplyService;
+import com.example.CampusFlowServer.domain.student.enrollment.service.StudentEnrollmentLockCommandService;
+import com.example.CampusFlowServer.domain.student.enrollment.service.StudentEnrollmentService;
+import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.Cookie;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -61,8 +68,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.transaction.TestTransaction;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -74,6 +84,8 @@ class StudentEnrollmentIntegrationTest {
     private static final String CSRF_COOKIE = "XSRF-TOKEN";
     private static final String CSRF_HEADER = "X-XSRF-TOKEN";
     private static final String PASSWORD = "password123!";
+
+    private boolean committedFixtureTransaction;
 
     @Autowired
     private MockMvc mockMvc;
@@ -125,6 +137,141 @@ class StudentEnrollmentIntegrationTest {
 
     @Autowired
     private CompletedCourseRepository completedCourseRepository;
+
+    @Autowired
+    private StudentEnrollmentService studentEnrollmentService;
+
+    @Autowired
+    private StudentEnrollmentApplyService studentEnrollmentApplyService;
+
+    @Autowired
+    private StudentEnrollmentLockCommandService studentEnrollmentLockCommandService;
+
+    @Autowired
+    private EntityManager entityManager;
+
+    @AfterEach
+    void cleanCommittedEnrollmentFixtures() {
+        if (!committedFixtureTransaction) {
+            return;
+        }
+        ensureActiveTestTransaction();
+        entityManager.createNativeQuery("""
+            delete from wish_courses
+            where course_offering_id in (
+                select co.id
+                from course_offerings co
+                join subjects s on co.subject_id = s.id
+                where s.code like 'ENR%'
+            )
+            or student_profile_id in (
+                select sp.id
+                from student_profiles sp
+                join members m on sp.member_id = m.id
+                where m.login_id like 'enrollment-%'
+            )
+            """).executeUpdate();
+        entityManager.createNativeQuery("""
+            delete from enrollments
+            where course_offering_id in (
+                select co.id
+                from course_offerings co
+                join subjects s on co.subject_id = s.id
+                where s.code like 'ENR%'
+            )
+            or student_profile_id in (
+                select sp.id
+                from student_profiles sp
+                join members m on sp.member_id = m.id
+                where m.login_id like 'enrollment-%'
+            )
+            """).executeUpdate();
+        entityManager.createNativeQuery("""
+            delete from completed_courses
+            where student_profile_id in (
+                select sp.id
+                from student_profiles sp
+                join members m on sp.member_id = m.id
+                where m.login_id like 'enrollment-%'
+            )
+            or subject_id in (select id from subjects where code like 'ENR%')
+            """).executeUpdate();
+        entityManager.createNativeQuery("""
+            delete from course_allowed_grades
+            where course_offering_id in (
+                select co.id
+                from course_offerings co
+                join subjects s on co.subject_id = s.id
+                where s.code like 'ENR%'
+            )
+            """).executeUpdate();
+        entityManager.createNativeQuery("""
+            delete from course_prerequisites
+            where subject_id in (select id from subjects where code like 'ENR%')
+               or prerequisite_subject_id in (select id from subjects where code like 'ENR%')
+            """).executeUpdate();
+        entityManager.createNativeQuery("""
+            delete from course_times
+            where course_offering_id in (
+                select co.id
+                from course_offerings co
+                join subjects s on co.subject_id = s.id
+                where s.code like 'ENR%'
+            )
+            """).executeUpdate();
+        entityManager.createNativeQuery("""
+            delete from course_offerings
+            where subject_id in (select id from subjects where code like 'ENR%')
+            """).executeUpdate();
+        entityManager.createNativeQuery("delete from subjects where code like 'ENR%'")
+            .executeUpdate();
+        entityManager.createNativeQuery("""
+            delete from refresh_tokens
+            where member_id in (select id from members where login_id like 'enrollment-%')
+            """).executeUpdate();
+        entityManager.createNativeQuery("""
+            delete from student_profiles
+            where member_id in (select id from members where login_id like 'enrollment-%')
+            """).executeUpdate();
+        entityManager.createNativeQuery("""
+            delete from professor_profiles
+            where member_id in (select id from members where login_id like 'enrollment-%')
+            """).executeUpdate();
+        entityManager.createNativeQuery("""
+            delete from staff_profiles
+            where member_id in (select id from members where login_id like 'enrollment-%')
+            """).executeUpdate();
+        entityManager.createNativeQuery("delete from members where login_id like 'enrollment-%'")
+            .executeUpdate();
+        entityManager.flush();
+        TestTransaction.flagForCommit();
+        committedFixtureTransaction = false;
+    }
+
+    @Test
+    void applyTransactionBoundariesAreSplitAcrossBeans() throws Exception {
+        Class<?> studentEnrollmentServiceClass = AopUtils.getTargetClass(studentEnrollmentService);
+        Class<?> applyServiceClass = AopUtils.getTargetClass(studentEnrollmentApplyService);
+        Class<?> lockCommandServiceClass = AopUtils.getTargetClass(studentEnrollmentLockCommandService);
+
+        Transactional serviceApplyTransaction = studentEnrollmentServiceClass
+            .getMethod("apply", Long.class, StudentEnrollmentApplyRequest.class)
+            .getAnnotation(Transactional.class);
+        Transactional applyTransaction = applyServiceClass
+            .getMethod("apply", Long.class, StudentEnrollmentApplyRequest.class)
+            .getAnnotation(Transactional.class);
+        Transactional commandTransaction = lockCommandServiceClass
+            .getMethod("applyWithLock", Class.forName(
+                "com.example.CampusFlowServer.domain.student.enrollment.service.EnrollmentPreValidationResult"
+            ))
+            .getAnnotation(Transactional.class);
+
+        assertThat(applyServiceClass).isNotEqualTo(studentEnrollmentServiceClass);
+        assertThat(lockCommandServiceClass).isNotEqualTo(studentEnrollmentServiceClass);
+        assertThat(serviceApplyTransaction.propagation()).isEqualTo(Propagation.NOT_SUPPORTED);
+        assertThat(applyTransaction.propagation()).isEqualTo(Propagation.NOT_SUPPORTED);
+        assertThat(commandTransaction.propagation()).isEqualTo(Propagation.REQUIRES_NEW);
+    }
 
     @Test
     void cancellingEnrolledEnrollmentChangesStatusToCancelled() throws Exception {
@@ -314,6 +461,7 @@ class StudentEnrollmentIntegrationTest {
         Cookie secondToken = login(fixture.otherStudentProfile().getMember().getLoginId());
         Cookie csrfCookie = getCsrfCookie();
 
+        commitFixtureTransaction();
         MvcResult firstApply = mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(firstToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -333,6 +481,7 @@ class StudentEnrollmentIntegrationTest {
                 .header(CSRF_HEADER, csrfCookie.getValue()))
             .andExpect(status().isOk());
 
+        commitFixtureTransaction();
         mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(secondToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -343,6 +492,7 @@ class StudentEnrollmentIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.waitNo").value(1));
 
+        commitFixtureTransaction();
         mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(firstToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -573,6 +723,7 @@ class StudentEnrollmentIntegrationTest {
         Cookie accessToken = login(fixture.student().getLoginId());
         Cookie csrfCookie = getCsrfCookie();
 
+        commitFixtureTransaction();
         MvcResult result = mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(accessToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -604,6 +755,7 @@ class StudentEnrollmentIntegrationTest {
         Cookie accessToken = login(fixture.student().getLoginId());
         Cookie csrfCookie = getCsrfCookie();
 
+        commitFixtureTransaction();
         MvcResult result = mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(accessToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -624,6 +776,178 @@ class StudentEnrollmentIntegrationTest {
     }
 
     @Test
+    void applyingFullCourseReturnsSequentialWaitNoByCount() throws Exception {
+        EnrollmentFixture fixture = saveFixture("apply-waiting-sequence");
+        saveEnrollmentSchedule(fixture.semester(), true);
+        CourseOffering fullOffering = saveOffering(
+            fixture,
+            "ENR102-apply-waiting-sequence",
+            "Networks",
+            1,
+            DayOfWeek.TUE
+        );
+        StudentProfile thirdStudentProfile = saveStudentProfile(
+            "enrollment-third-student-apply-waiting-sequence",
+            "Third Student apply-waiting-sequence",
+            "ETS-apply-waiting-sequence",
+            fixture.courseOffering().getSubject().getDepartment()
+        );
+        saveEnrollment(
+            fixture.otherStudentProfile(),
+            fixture.semester(),
+            fullOffering,
+            EnrollmentStatus.ENROLLED,
+            null
+        );
+
+        applyEnrollment(fixture.student(), fullOffering)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("WAITING"))
+            .andExpect(jsonPath("$.waitNo").value(1));
+
+        applyEnrollment(thirdStudentProfile.getMember(), fullOffering)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("WAITING"))
+            .andExpect(jsonPath("$.waitNo").value(2));
+    }
+
+    @Test
+    void reapplyingCancelledEnrollmentUsesUpdatedAppliedAtForWaitNo() throws Exception {
+        EnrollmentFixture fixture = saveFixture("reapply-wait-count");
+        saveEnrollmentSchedule(fixture.semester(), true);
+        CourseOffering fullOffering = saveOffering(
+            fixture,
+            "ENR102-reapply-wait-count",
+            "Networks",
+            1,
+            DayOfWeek.TUE
+        );
+        saveEnrollment(
+            fixture.otherStudentProfile(),
+            fixture.semester(),
+            fullOffering,
+            EnrollmentStatus.ENROLLED,
+            null
+        );
+        saveEnrollmentAt(
+            saveStudentProfile(
+                "enrollment-third-student-reapply-wait-count",
+                "Third Student reapply-wait-count",
+                "ETS-reapply-wait-count",
+                fixture.courseOffering().getSubject().getDepartment()
+            ),
+            fixture.semester(),
+            fullOffering,
+            EnrollmentStatus.WAITING,
+            null,
+            LocalDateTime.now().minusMinutes(1)
+        );
+        Enrollment cancelled = saveEnrollmentAt(
+            fixture.studentProfile(),
+            fixture.semester(),
+            fullOffering,
+            EnrollmentStatus.WAITING,
+            null,
+            LocalDateTime.now().minusMinutes(10)
+        );
+        cancelled.cancel(LocalDateTime.now().minusMinutes(5));
+        enrollmentRepository.saveAndFlush(cancelled);
+
+        applyEnrollment(fixture.student(), fullOffering)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("WAITING"))
+            .andExpect(jsonPath("$.waitNo").value(2));
+    }
+
+    @Test
+    void countWaitingPositionUsesAppliedAtIdAndFiltersStatusAndCourseOffering() {
+        EnrollmentFixture fixture = saveFixture("wait-count-query");
+        CourseOffering otherOffering = saveOffering(
+            fixture,
+            "ENR102-wait-count-query",
+            "Networks",
+            1,
+            DayOfWeek.TUE
+        );
+        LocalDateTime baseTime = LocalDateTime.now();
+        Enrollment earlier = saveEnrollmentAt(
+            fixture.otherStudentProfile(),
+            fixture.semester(),
+            fixture.courseOffering(),
+            EnrollmentStatus.WAITING,
+            null,
+            baseTime.minusMinutes(1)
+        );
+        Enrollment sameTimeFirst = saveEnrollmentAt(
+            fixture.studentProfile(),
+            fixture.semester(),
+            fixture.courseOffering(),
+            EnrollmentStatus.WAITING,
+            null,
+            baseTime
+        );
+        StudentProfile thirdStudentProfile = saveStudentProfile(
+            "enrollment-third-student-wait-count-query",
+            "Third Student wait-count-query",
+            "ETS-wait-count-query",
+            fixture.courseOffering().getSubject().getDepartment()
+        );
+        Enrollment sameTimeSecond = saveEnrollmentAt(
+            thirdStudentProfile,
+            fixture.semester(),
+            fixture.courseOffering(),
+            EnrollmentStatus.WAITING,
+            null,
+            baseTime
+        );
+        StudentProfile fourthStudentProfile = saveStudentProfile(
+            "enrollment-fourth-student-wait-count-query",
+            "Fourth Student wait-count-query",
+            "EFS-wait-count-query",
+            fixture.courseOffering().getSubject().getDepartment()
+        );
+        Enrollment cancelled = saveEnrollmentAt(
+            fourthStudentProfile,
+            fixture.semester(),
+            fixture.courseOffering(),
+            EnrollmentStatus.WAITING,
+            null,
+            baseTime.minusMinutes(2)
+        );
+        cancelled.cancel(LocalDateTime.now());
+        enrollmentRepository.saveAndFlush(cancelled);
+        saveEnrollmentAt(
+            saveStudentProfile(
+                "enrollment-fifth-student-wait-count-query",
+                "Fifth Student wait-count-query",
+                "EFTS-wait-count-query",
+                fixture.courseOffering().getSubject().getDepartment()
+            ),
+            fixture.semester(),
+            otherOffering,
+            EnrollmentStatus.WAITING,
+            null,
+            baseTime.minusMinutes(2)
+        );
+
+        assertThat(enrollmentRepository.countWaitingPosition(
+            fixture.courseOffering().getId(),
+            EnrollmentStatus.WAITING,
+            earlier.getId()
+        )).isEqualTo(1);
+        assertThat(enrollmentRepository.countWaitingPosition(
+            fixture.courseOffering().getId(),
+            EnrollmentStatus.WAITING,
+            sameTimeFirst.getId()
+        )).isEqualTo(2);
+        assertThat(enrollmentRepository.countWaitingPosition(
+            fixture.courseOffering().getId(),
+            EnrollmentStatus.WAITING,
+            sameTimeSecond.getId()
+        )).isEqualTo(3);
+    }
+
+    @Test
     void duplicateApplyReturnsDomainError() throws Exception {
         EnrollmentFixture fixture = saveFixture("duplicate-apply");
         saveEnrollmentSchedule(fixture.semester(), true);
@@ -631,6 +955,7 @@ class StudentEnrollmentIntegrationTest {
         Cookie accessToken = login(fixture.student().getLoginId());
         Cookie csrfCookie = getCsrfCookie();
 
+        commitFixtureTransaction();
         mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(accessToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -649,6 +974,7 @@ class StudentEnrollmentIntegrationTest {
         Cookie accessToken = login(fixture.student().getLoginId());
         Cookie csrfCookie = getCsrfCookie();
 
+        commitFixtureTransaction();
         mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(accessToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -668,6 +994,7 @@ class StudentEnrollmentIntegrationTest {
         Cookie accessToken = login(fixture.student().getLoginId());
         Cookie csrfCookie = getCsrfCookie();
 
+        commitFixtureTransaction();
         mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(accessToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -694,6 +1021,7 @@ class StudentEnrollmentIntegrationTest {
         Cookie accessToken = login(fixture.student().getLoginId());
         Cookie csrfCookie = getCsrfCookie();
 
+        commitFixtureTransaction();
         mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(accessToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -715,6 +1043,7 @@ class StudentEnrollmentIntegrationTest {
         Cookie accessToken = login(fixture.student().getLoginId());
         Cookie csrfCookie = getCsrfCookie();
 
+        commitFixtureTransaction();
         mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(accessToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -748,6 +1077,7 @@ class StudentEnrollmentIntegrationTest {
         Cookie accessToken = login(fixture.student().getLoginId());
         Cookie csrfCookie = getCsrfCookie();
 
+        commitFixtureTransaction();
         mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(accessToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -776,6 +1106,7 @@ class StudentEnrollmentIntegrationTest {
         Cookie accessToken = login(fixture.student().getLoginId());
         Cookie csrfCookie = getCsrfCookie();
 
+        commitFixtureTransaction();
         mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(accessToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -810,6 +1141,7 @@ class StudentEnrollmentIntegrationTest {
         Cookie accessToken = login(fixture.student().getLoginId());
         Cookie csrfCookie = getCsrfCookie();
 
+        commitFixtureTransaction();
         mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(accessToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -844,6 +1176,7 @@ class StudentEnrollmentIntegrationTest {
         Cookie accessToken = login(fixture.student().getLoginId());
         Cookie csrfCookie = getCsrfCookie();
 
+        commitFixtureTransaction();
         mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(accessToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -860,6 +1193,7 @@ class StudentEnrollmentIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("CANCELLED"));
 
+        commitFixtureTransaction();
         mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(accessToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -919,6 +1253,7 @@ class StudentEnrollmentIntegrationTest {
         Cookie accessToken = login(fixture.student().getLoginId());
         Cookie csrfCookie = getCsrfCookie();
 
+        commitFixtureTransaction();
         mockMvc.perform(apiPost("/api/v1/student/enrollments")
                 .cookie(accessToken, csrfCookie)
                 .header(CSRF_HEADER, csrfCookie.getValue())
@@ -1008,17 +1343,25 @@ class StudentEnrollmentIntegrationTest {
         saveEnrollment(fixture.studentProfile(), fixture.semester(), waitingOffering, EnrollmentStatus.WAITING, 1);
         Cookie accessToken = login(fixture.student().getLoginId());
 
-        mockMvc.perform(apiGet("/api/v1/student/enrollments/courses")
+        MvcResult result = mockMvc.perform(apiGet("/api/v1/student/enrollments/courses")
                 .cookie(accessToken)
                 .param("mode", "condition")
                 .param("year", "2026")
                 .param("term", "FIRST")
                 .param("departmentName", "Computer Science"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].subjectCode").value("ENR101-search"))
-            .andExpect(jsonPath("$[0].status").value("ENROLLED"))
-            .andExpect(jsonPath("$[1].subjectCode").value("ENR102-search"))
-            .andExpect(jsonPath("$[1].status").value("WAITING"));
+            .andReturn();
+
+        List<String> enrolledStatuses = com.jayway.jsonpath.JsonPath.read(
+            result.getResponse().getContentAsString(),
+            "$[?(@.subjectCode == 'ENR101-search')].status"
+        );
+        List<String> waitingStatuses = com.jayway.jsonpath.JsonPath.read(
+            result.getResponse().getContentAsString(),
+            "$[?(@.subjectCode == 'ENR102-search')].status"
+        );
+        assertThat(enrolledStatuses).containsExactly("ENROLLED");
+        assertThat(waitingStatuses).containsExactly("WAITING");
     }
 
     @Test
@@ -1298,6 +1641,33 @@ class StudentEnrollmentIntegrationTest {
             name,
             role
         ));
+    }
+
+    private ResultActions applyEnrollment(Member student, CourseOffering courseOffering) throws Exception {
+        commitFixtureTransaction();
+        Cookie accessToken = login(student.getLoginId());
+        Cookie csrfCookie = getCsrfCookie();
+        return mockMvc.perform(apiPost("/api/v1/student/enrollments")
+            .cookie(accessToken, csrfCookie)
+            .header(CSRF_HEADER, csrfCookie.getValue())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"courseOfferingId":%d}
+                """.formatted(courseOffering.getId())));
+    }
+
+    private void commitFixtureTransaction() {
+        if (TestTransaction.isActive()) {
+            TestTransaction.flagForCommit();
+            TestTransaction.end();
+            committedFixtureTransaction = true;
+        }
+    }
+
+    private void ensureActiveTestTransaction() {
+        if (!TestTransaction.isActive()) {
+            TestTransaction.start();
+        }
     }
 
     private Cookie login(String loginId) throws Exception {

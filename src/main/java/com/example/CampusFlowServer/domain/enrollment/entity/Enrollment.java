@@ -43,6 +43,10 @@ import lombok.NoArgsConstructor;
         @Index(
             name = "idx_enrollment_course_status",
             columnList = "course_offering_id, status"
+        ),
+        @Index(
+            name = "idx_enrollment_course_status_applied_id",
+            columnList = "course_offering_id, status, applied_at, id"
         )
     }
 )

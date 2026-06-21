@@ -49,6 +49,23 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
         @Param("statuses") Collection<EnrollmentStatus> statuses
     );
 
+    @Query("""
+        select count(e.id)
+        from Enrollment e, Enrollment current
+        where e.courseOffering.id = :courseOfferingId
+          and e.status = :status
+          and current.id = :enrollmentId
+          and (
+              e.appliedAt < current.appliedAt
+              or (e.appliedAt = current.appliedAt and e.id <= current.id)
+          )
+        """)
+    long countWaitingPosition(
+        @Param("courseOfferingId") Long courseOfferingId,
+        @Param("status") EnrollmentStatus status,
+        @Param("enrollmentId") Long enrollmentId
+    );
+
     @EntityGraph(attributePaths = {"student", "courseOffering"})
     List<Enrollment> findByCourseOfferingIdAndStatusOrderByAppliedAtAscIdAsc(
         Long courseOfferingId,
