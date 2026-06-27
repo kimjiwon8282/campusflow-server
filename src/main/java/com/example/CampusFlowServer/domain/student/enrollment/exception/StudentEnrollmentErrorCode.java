@@ -87,6 +87,36 @@ public enum StudentEnrollmentErrorCode {
         "ENROLLMENT_016",
         "Only enrolled or waiting enrollment can be cancelled.",
         HttpStatus.BAD_REQUEST
+    ),
+    AUTO_ENROLLMENT_SCHEDULE_NOT_FOUND(
+        "ENROLLMENT_017",
+        "Enrollment schedule was not found for the auto-enrollment batch.",
+        HttpStatus.BAD_REQUEST
+    ),
+    AUTO_ENROLLMENT_ALWAYS_OPEN_UNSUPPORTED(
+        "ENROLLMENT_018",
+        "Always-open enrollment schedules cannot run the pre-apply batch.",
+        HttpStatus.BAD_REQUEST
+    ),
+    AUTO_ENROLLMENT_START_AT_REQUIRED(
+        "ENROLLMENT_019",
+        "Enrollment start time is required to run the pre-apply batch.",
+        HttpStatus.BAD_REQUEST
+    ),
+    AUTO_ENROLLMENT_BATCH_ALREADY_COMPLETED(
+        "ENROLLMENT_020",
+        "The auto-enrollment pre-apply batch has already completed for these parameters.",
+        HttpStatus.CONFLICT
+    ),
+    AUTO_ENROLLMENT_BATCH_ALREADY_RUNNING(
+        "ENROLLMENT_021",
+        "The auto-enrollment pre-apply batch is already running for these parameters.",
+        HttpStatus.CONFLICT
+    ),
+    AUTO_ENROLLMENT_BATCH_LAUNCH_FAILED(
+        "ENROLLMENT_022",
+        "The auto-enrollment pre-apply batch could not be launched.",
+        HttpStatus.INTERNAL_SERVER_ERROR
     );
 
     private final String code;

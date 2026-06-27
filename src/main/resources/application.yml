@@ -1,6 +1,9 @@
 spring:
   application:
     name: CampusFlowServer
+  batch:
+    job:
+      enabled: false
   profiles:
     default: local #기본 실행 프로필
 
@@ -14,3 +17,11 @@ server:
 
 app:
   api-prefix: /api/v1 #백엔드 API prefix
+
+campusflow:
+  auto-enrollment:
+    pre-apply:
+      scheduler:
+        enabled: ${AUTO_ENROLLMENT_PRE_APPLY_SCHEDULER_ENABLED:false}
+        cron: ${AUTO_ENROLLMENT_PRE_APPLY_SCHEDULER_CRON:0 0 2 * * *}
+        zone: ${AUTO_ENROLLMENT_PRE_APPLY_SCHEDULER_ZONE:Asia/Seoul}

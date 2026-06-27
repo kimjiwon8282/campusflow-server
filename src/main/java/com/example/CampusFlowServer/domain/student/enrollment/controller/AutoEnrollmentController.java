@@ -2,6 +2,8 @@ package com.example.CampusFlowServer.domain.student.enrollment.controller;
 
 import com.example.CampusFlowServer.domain.student.enrollment.dto.AutoEnrollmentApplyRequest;
 import com.example.CampusFlowServer.domain.student.enrollment.dto.AutoEnrollmentApplyResponse;
+import com.example.CampusFlowServer.domain.student.enrollment.dto.AutoEnrollmentBatchLaunchResponse;
+import com.example.CampusFlowServer.domain.student.enrollment.service.AutoEnrollmentBatchLaunchService;
 import com.example.CampusFlowServer.domain.student.enrollment.service.AutoEnrollmentService;
 import com.example.CampusFlowServer.global.config.OpenApiConfig;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AutoEnrollmentController {
 
     private final AutoEnrollmentService autoEnrollmentService;
+    private final AutoEnrollmentBatchLaunchService autoEnrollmentBatchLaunchService;
 
     @PostMapping("/apply")
     @PreAuthorize("hasRole('STAFF')")
@@ -32,5 +35,17 @@ public class AutoEnrollmentController {
         @RequestBody AutoEnrollmentApplyRequest request
     ) {
         return autoEnrollmentService.applyAutoEnrollments(request.year(), request.term());
+    }
+
+    @PostMapping("/pre-apply-batch")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(
+        summary = "Launch auto-enrollment pre-apply batch",
+        security = @SecurityRequirement(name = OpenApiConfig.ACCESS_TOKEN_COOKIE_AUTH)
+    )
+    public AutoEnrollmentBatchLaunchResponse launchPreApplyBatch(
+        @RequestBody AutoEnrollmentApplyRequest request
+    ) {
+        return autoEnrollmentBatchLaunchService.launch(request.year(), request.term());
     }
 }

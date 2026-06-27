@@ -5,6 +5,12 @@ spring:
     username: sa
     password:
 
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:org/springframework/batch/core/schema-h2.sql
+      continue-on-error: true
+
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -15,6 +21,14 @@ spring:
         show_sql: false
     open-in-view: false
     show-sql: false
+
+campusflow:
+  auto-enrollment:
+    pre-apply:
+      scheduler:
+        enabled: false
+        cron: "0 0 2 * * *"
+        zone: Asia/Seoul
 
 app:
   jwt:
