@@ -20,8 +20,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 @Configuration
 public class AutoEnrollmentBatchConfig {
 
-    public static final String JOB_NAME = "autoEnrollmentPreApplyJob";
-    public static final String STEP_NAME = "applyDoneWishCoursesStep";
+    public static final String JOB_NAME = "autoEnrollmentPreApplyJob"; //희망과목 자동신청 사전 반영 작업 전체
+    public static final String STEP_NAME = "applyDoneWishCoursesStep"; //DONE 희망과목을 읽고 자동신청으로 반영하는 단계
     private static final int CHUNK_SIZE = 20;
 
     @Bean(JOB_NAME)
@@ -30,7 +30,7 @@ public class AutoEnrollmentBatchConfig {
         @Qualifier(STEP_NAME) Step applyDoneWishCoursesStep
     ) {
         return new JobBuilder(JOB_NAME, jobRepository)
-            .start(applyDoneWishCoursesStep)
+            .start(applyDoneWishCoursesStep)//하나의 스텝으로 구성
             .build();
     }
 
@@ -44,9 +44,9 @@ public class AutoEnrollmentBatchConfig {
         return new StepBuilder(STEP_NAME, jobRepository)
             .<AutoEnrollmentBatchItem, AutoEnrollmentBatchItem>chunk(CHUNK_SIZE)
             .transactionManager(transactionManager)
-            .reader(autoEnrollmentBatchReader)
-            .writer(autoEnrollmentBatchWriter)
-            .listener(autoEnrollmentBatchWriter)
+            .reader(autoEnrollmentBatchReader) //자동신청 대상 조회
+            .writer(autoEnrollmentBatchWriter) //각 대상 처리
+            .listener(autoEnrollmentBatchWriter) //처리결과 집계 저장
             .build();
     }
 

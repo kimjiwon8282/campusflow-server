@@ -2,10 +2,6 @@ package com.example.CampusFlowServer.domain.student.enrollment.service;
 
 import com.example.CampusFlowServer.domain.semester.entity.Semester;
 import com.example.CampusFlowServer.domain.semester.entity.SemesterSchedule;
-import com.example.CampusFlowServer.domain.semester.enums.SemesterScheduleType;
-import com.example.CampusFlowServer.domain.semester.enums.SemesterTerm;
-import com.example.CampusFlowServer.domain.semester.repository.SemesterRepository;
-import com.example.CampusFlowServer.domain.semester.repository.SemesterScheduleRepository;
 import com.example.CampusFlowServer.domain.student.enrollment.batch.AutoEnrollmentBatchConfig;
 import com.example.CampusFlowServer.domain.student.enrollment.batch.AutoEnrollmentBatchWriter;
 import com.example.CampusFlowServer.domain.student.enrollment.dto.AutoEnrollmentApplyOneStatus;
@@ -41,22 +37,6 @@ public class AutoEnrollmentBatchLaunchService {
     private final JobOperator jobOperator;
     @Qualifier(AutoEnrollmentBatchConfig.JOB_NAME)
     private final Job autoEnrollmentPreApplyJob;
-    private final SemesterRepository semesterRepository;
-    private final SemesterScheduleRepository semesterScheduleRepository;
-
-    public AutoEnrollmentBatchLaunchResponse launch(Integer year, SemesterTerm term) {
-        validateRequired(year, term);
-        Semester semester = semesterRepository.findByYearAndTerm(year, term)
-            .orElseThrow(() -> new StudentEnrollmentException(
-                StudentEnrollmentErrorCode.SEMESTER_NOT_FOUND
-            ));
-        SemesterSchedule schedule = semesterScheduleRepository
-            .findBySemesterIdAndType(semester.getId(), SemesterScheduleType.ENROLLMENT)
-            .orElseThrow(() -> new StudentEnrollmentException(
-                StudentEnrollmentErrorCode.AUTO_ENROLLMENT_SCHEDULE_NOT_FOUND
-            ));
-        return launch(semester, schedule);
-    }
 
     public AutoEnrollmentBatchLaunchResponse launch(
         Semester semester,
@@ -161,14 +141,5 @@ public class AutoEnrollmentBatchLaunchService {
             context.getLong(AutoEnrollmentBatchWriter.FAILED_COUNT, 0L),
             Map.copyOf(statusCounts)
         );
-    }
-
-    private void validateRequired(Integer year, SemesterTerm term) {
-        if (year == null) {
-            throw new StudentEnrollmentException(StudentEnrollmentErrorCode.REQUIRED_YEAR);
-        }
-        if (term == null) {
-            throw new StudentEnrollmentException(StudentEnrollmentErrorCode.REQUIRED_TERM);
-        }
     }
 }

@@ -88,11 +88,6 @@ public enum StudentEnrollmentErrorCode {
         "Only enrolled or waiting enrollment can be cancelled.",
         HttpStatus.BAD_REQUEST
     ),
-    AUTO_ENROLLMENT_SCHEDULE_NOT_FOUND(
-        "ENROLLMENT_017",
-        "Enrollment schedule was not found for the auto-enrollment batch.",
-        HttpStatus.BAD_REQUEST
-    ),
     AUTO_ENROLLMENT_ALWAYS_OPEN_UNSUPPORTED(
         "ENROLLMENT_018",
         "Always-open enrollment schedules cannot run the pre-apply batch.",

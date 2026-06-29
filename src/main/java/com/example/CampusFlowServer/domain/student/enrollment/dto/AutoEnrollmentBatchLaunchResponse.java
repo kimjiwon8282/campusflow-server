@@ -5,7 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-public record AutoEnrollmentBatchLaunchResponse(
+public record AutoEnrollmentBatchLaunchResponse(//배치의 실행 결과를 담는 DTO
     Long jobExecutionId,
     String jobName,
     String status,

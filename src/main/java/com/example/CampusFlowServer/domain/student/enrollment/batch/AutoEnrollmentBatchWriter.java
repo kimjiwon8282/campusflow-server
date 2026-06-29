@@ -40,7 +40,7 @@ public class AutoEnrollmentBatchWriter
         for (AutoEnrollmentBatchItem item : chunk) {
             targetCount++;
             try {
-                AutoEnrollmentApplyOneResult result = autoEnrollmentCommandService.applyOne(
+                AutoEnrollmentApplyOneResult result = autoEnrollmentCommandService.applyOne(//실제 자동 신청은 Command에 위임함
                     item.wishCourseId(),
                     item.courseOfferingId()
                 );

@@ -54,7 +54,6 @@ import com.example.CampusFlowServer.domain.student.enrollment.dto.AutoEnrollment
 import com.example.CampusFlowServer.domain.student.enrollment.dto.AutoEnrollmentBatchLaunchResponse;
 import com.example.CampusFlowServer.domain.student.enrollment.dto.StudentEnrollmentApplyRequest;
 import com.example.CampusFlowServer.domain.student.enrollment.service.AutoEnrollmentCommandService;
-import com.example.CampusFlowServer.domain.student.enrollment.service.AutoEnrollmentService;
 import com.example.CampusFlowServer.domain.student.enrollment.service.AutoEnrollmentBatchLaunchService;
 import com.example.CampusFlowServer.domain.student.enrollment.exception.StudentEnrollmentErrorCode;
 import com.example.CampusFlowServer.domain.student.enrollment.exception.StudentEnrollmentException;
@@ -165,9 +164,6 @@ class StudentEnrollmentIntegrationTest {
 
     @Autowired
     private AutoEnrollmentCommandService autoEnrollmentCommandService;
-
-    @Autowired
-    private AutoEnrollmentService autoEnrollmentService;
 
     @Autowired
     private AutoEnrollmentBatchLaunchService autoEnrollmentBatchLaunchService;
@@ -281,7 +277,6 @@ class StudentEnrollmentIntegrationTest {
         Class<?> studentEnrollmentServiceClass = AopUtils.getTargetClass(studentEnrollmentService);
         Class<?> applyServiceClass = AopUtils.getTargetClass(studentEnrollmentApplyService);
         Class<?> lockCommandServiceClass = AopUtils.getTargetClass(studentEnrollmentLockCommandService);
-        Class<?> autoEnrollmentServiceClass = AopUtils.getTargetClass(autoEnrollmentService);
         Class<?> autoCommandServiceClass = AopUtils.getTargetClass(autoEnrollmentCommandService);
 
         Transactional serviceApplyTransaction = studentEnrollmentServiceClass
@@ -295,9 +290,6 @@ class StudentEnrollmentIntegrationTest {
                 "com.example.CampusFlowServer.domain.student.enrollment.service.EnrollmentPreValidationResult"
             ))
             .getAnnotation(Transactional.class);
-        Transactional autoOrchestrationTransaction = autoEnrollmentServiceClass
-            .getMethod("applyAutoEnrollments", Integer.class, SemesterTerm.class)
-            .getAnnotation(Transactional.class);
         Transactional autoCommandTransaction = autoCommandServiceClass
             .getMethod("applyOne", Long.class, Long.class)
             .getAnnotation(Transactional.class);
@@ -307,9 +299,6 @@ class StudentEnrollmentIntegrationTest {
         assertThat(serviceApplyTransaction.propagation()).isEqualTo(Propagation.NOT_SUPPORTED);
         assertThat(applyTransaction.propagation()).isEqualTo(Propagation.NOT_SUPPORTED);
         assertThat(commandTransaction.propagation()).isEqualTo(Propagation.REQUIRES_NEW);
-        assertThat(autoOrchestrationTransaction.propagation()).isEqualTo(
-            Propagation.NOT_SUPPORTED
-        );
         assertThat(autoCommandTransaction.propagation()).isEqualTo(Propagation.REQUIRES_NEW);
     }
 
@@ -663,63 +652,9 @@ class StudentEnrollmentIntegrationTest {
 
 
     @Test
-    void applyingDoneWishCoursesCreatesAutoEnrollmentAndSkipsActiveDuplicate() throws Exception {
-        EnrollmentFixture fixture = saveFixture("auto-apply");
-        CourseOffering duplicateOffering = saveOffering(
-            fixture,
-            "ENR102-auto-apply",
-            "Databases",
-            30,
-            DayOfWeek.TUE
-        );
-        saveWishAuto(fixture.studentProfile(), fixture.semester(), fixture.courseOffering(), WishAutoApplyResult.DONE);
-        saveWishAuto(fixture.studentProfile(), fixture.semester(), duplicateOffering, WishAutoApplyResult.DONE);
-        saveEnrollment(
-            fixture.studentProfile(),
-            fixture.semester(),
-            duplicateOffering,
-            EnrollmentStatus.ENROLLED,
-            null
-        );
-        commitFixtureTransaction();
-        Cookie staffToken = login(fixture.staff().getLoginId());
-        Cookie csrfCookie = getCsrfCookie();
-
-        mockMvc.perform(apiPost("/api/v1/staff/auto-enrollments/apply")
-                .cookie(staffToken, csrfCookie)
-                .header(CSRF_HEADER, csrfCookie.getValue())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                    {"year":2026,"term":"FIRST"}
-                    """))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.targetCount").value(2))
-            .andExpect(jsonPath("$.createdCount").value(1))
-            .andExpect(jsonPath("$.skippedCount").value(1));
-
-        List<Enrollment> enrollments = enrollmentRepository.findByStudentIdAndSemesterIdAndStatusIn(
-            fixture.studentProfile().getId(),
-            fixture.semester().getId(),
-            List.of(EnrollmentStatus.ENROLLED)
-        );
-        assertThat(enrollments)
-            .filteredOn(enrollment -> enrollment.getCourseOffering().getId().equals(
-                fixture.courseOffering().getId()
-            ))
-            .singleElement()
-            .satisfies(enrollment -> assertThat(enrollment.getSource())
-                .isEqualTo(EnrollmentSource.AUTO));
-        assertThat(enrollments)
-            .filteredOn(enrollment -> enrollment.getCourseOffering().getId().equals(
-                duplicateOffering.getId()
-            ))
-            .hasSize(1);
-    }
-
-    @Test
-    void preApplyBatchProcessesDoneWishesAndAggregatesResults() throws Exception {
+    void preApplyBatchProcessesDoneWishesAndAggregatesResults() {
         EnrollmentFixture fixture = saveFixture("batch-main");
-        saveEnrollmentSchedule(fixture.semester(), true);
+        SemesterSchedule schedule = saveEnrollmentSchedule(fixture.semester(), true);
         CourseOffering pendingOffering = saveOffering(
             fixture,
             "ENR102-batch-main",
@@ -824,32 +759,26 @@ class StudentEnrollmentIntegrationTest {
         Long studentId = fixture.studentProfile().getId();
         Long semesterId = fixture.semester().getId();
         Long cancelledEnrollmentId = cancelled.getId();
-        String staffLoginId = fixture.staff().getLoginId();
         commitFixtureTransaction();
-        Cookie staffToken = login(staffLoginId);
-        Cookie csrfCookie = getCsrfCookie();
 
-        mockMvc.perform(apiPost("/api/v1/staff/auto-enrollments/pre-apply-batch")
-                .cookie(staffToken, csrfCookie)
-                .header(CSRF_HEADER, csrfCookie.getValue())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                    {"year":2026,"term":"FIRST"}
-                    """))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.jobName").value("autoEnrollmentPreApplyJob"))
-            .andExpect(jsonPath("$.status").value("COMPLETED"))
-            .andExpect(jsonPath("$.semesterId").value(semesterId))
-            .andExpect(jsonPath("$.targetCount").value(5))
-            .andExpect(jsonPath("$.appliedCount").value(2))
-            .andExpect(jsonPath("$.skippedCount").value(3))
-            .andExpect(jsonPath("$.failedCount").value(0))
-            .andExpect(jsonPath("$.statusCounts.APPLIED").value(1))
-            .andExpect(jsonPath("$.statusCounts.REACTIVATED").value(1))
-            .andExpect(jsonPath("$.statusCounts.SKIPPED_ALREADY_ACTIVE").value(2))
-            .andExpect(jsonPath("$.statusCounts.SKIPPED_OVER_CAPACITY").value(1))
-            .andExpect(jsonPath("$.enrollmentStartAt").exists())
-            .andExpect(jsonPath("$.businessDate").exists());
+        AutoEnrollmentBatchLaunchResponse response = autoEnrollmentBatchLaunchService.launch(
+            fixture.semester(),
+            schedule
+        );
+
+        assertThat(response.jobName()).isEqualTo("autoEnrollmentPreApplyJob");
+        assertThat(response.status()).isEqualTo("COMPLETED");
+        assertThat(response.semesterId()).isEqualTo(semesterId);
+        assertThat(response.targetCount()).isEqualTo(5);
+        assertThat(response.appliedCount()).isEqualTo(2);
+        assertThat(response.skippedCount()).isEqualTo(3);
+        assertThat(response.failedCount()).isZero();
+        assertThat(response.statusCounts()).containsEntry("APPLIED", 1L);
+        assertThat(response.statusCounts()).containsEntry("REACTIVATED", 1L);
+        assertThat(response.statusCounts()).containsEntry("SKIPPED_ALREADY_ACTIVE", 2L);
+        assertThat(response.statusCounts()).containsEntry("SKIPPED_OVER_CAPACITY", 1L);
+        assertThat(response.enrollmentStartAt()).isNotNull();
+        assertThat(response.businessDate()).isNotNull();
 
         List<Enrollment> activeEnrollments = enrollmentRepository
             .findByStudentIdAndSemesterIdAndStatusIn(
@@ -874,7 +803,7 @@ class StudentEnrollmentIntegrationTest {
     @Test
     void completedPreApplyBatchRejectsSameJobParametersWithoutCreatingDuplicate() {
         EnrollmentFixture fixture = saveFixture("batch-repeat");
-        saveEnrollmentSchedule(fixture.semester(), true);
+        SemesterSchedule schedule = saveEnrollmentSchedule(fixture.semester(), true);
         saveWishAuto(
             fixture.studentProfile(),
             fixture.semester(),
@@ -886,8 +815,8 @@ class StudentEnrollmentIntegrationTest {
         commitFixtureTransaction();
 
         AutoEnrollmentBatchLaunchResponse first = autoEnrollmentBatchLaunchService.launch(
-            2026,
-            SemesterTerm.FIRST
+            fixture.semester(),
+            schedule
         );
 
         assertThat(first.status()).isEqualTo("COMPLETED");
@@ -897,8 +826,8 @@ class StudentEnrollmentIntegrationTest {
             "autoEnrollmentPreApplyJob"
         )).isPositive();
         assertThatThrownBy(() -> autoEnrollmentBatchLaunchService.launch(
-            2026,
-            SemesterTerm.FIRST
+            fixture.semester(),
+            schedule
         ))
             .isInstanceOf(StudentEnrollmentException.class)
             .extracting(exception -> ((StudentEnrollmentException) exception).getErrorCode())
@@ -913,7 +842,7 @@ class StudentEnrollmentIntegrationTest {
     @Test
     void preApplyBatchExcludesAllNonDoneWishResults() {
         EnrollmentFixture fixture = saveFixture("batch-exclude");
-        saveEnrollmentSchedule(fixture.semester(), true);
+        SemesterSchedule schedule = saveEnrollmentSchedule(fixture.semester(), true);
         List<WishAutoApplyResult> excludedResults = List.of(
             WishAutoApplyResult.PENDING,
             WishAutoApplyResult.OVER_CAPACITY,
@@ -939,8 +868,8 @@ class StudentEnrollmentIntegrationTest {
         commitFixtureTransaction();
 
         AutoEnrollmentBatchLaunchResponse response = autoEnrollmentBatchLaunchService.launch(
-            2026,
-            SemesterTerm.FIRST
+            fixture.semester(),
+            schedule
         );
 
         assertThat(response.status()).isEqualTo("COMPLETED");
